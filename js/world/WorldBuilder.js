@@ -66,12 +66,12 @@ export class WorldBuilder {
         const s = data.scale || 1.0;
         propRoot.scale.set(s, s, s);
 
-        // Enable shadows
+        // Enable shadows (Domes must NOT cast shadows to avoid blacking out ground)
         propRoot.traverse(child => {
             if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
                 if (data.isDome) {
+                    child.castShadow = false;
+                    child.receiveShadow = false;
                     child.material = new THREE.MeshPhysicalMaterial({
                         color: 0x90e0ef,
                         transparent: true,
@@ -81,6 +81,9 @@ export class WorldBuilder {
                         ior: 1.5,
                         depthWrite: false
                     });
+                } else {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
                 }
             }
         });
@@ -155,6 +158,12 @@ export class WorldBuilder {
             roof.position.y = 7.5;
             roof.rotation.y = Math.PI / 4;
             group.add(roof);
+        } else if (data.model.includes('pedestal')) {
+            const pedGeo = new THREE.CylinderGeometry(2.35, 2.7, 0.45, 32);
+            const pedMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.25, metalness: 0.8 });
+            const ped = new THREE.Mesh(pedGeo, pedMat);
+            ped.position.y = 0.22;
+            group.add(ped);
         } else if (data.interactive === 'treasure_chest') {
             const chestGeo = new THREE.BoxGeometry(1.4, 0.9, 1.0);
             const chestMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.6, roughness: 0.3 });

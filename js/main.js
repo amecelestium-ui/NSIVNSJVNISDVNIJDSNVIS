@@ -21,6 +21,8 @@ import { getAllHeroes, getHeroById } from './config/rosterData.js';
 import { FAST_TRAVEL_WAYPOINTS } from './config/worldLayoutData.js';
 
 import { AssetManager } from './core/AssetManager.js';
+import { AssetRegistry } from './core/AssetRegistry.js';
+import { RealtimeSyncEngine } from './network/RealtimeSyncEngine.js';
 import { SaveSystem } from './core/SaveSystem.js';
 import { PortraitCropper } from './core/PortraitCropper.js';
 
@@ -97,6 +99,7 @@ class KernelEngine {
         this.modalsUI = null;
         this.lobbyUI = null;
         this.combatHudUI = null;
+        this.syncEngine = new RealtimeSyncEngine();
 
         // World Components
         this.skyLighting = null;
@@ -107,7 +110,7 @@ class KernelEngine {
 
         // Character State
         this.allHeroes = getAllHeroes();
-        this.selectedHero = getHeroById('freya') || this.allHeroes[0];
+        this.selectedHero = getHeroById('christy') || getHeroById('freya') || this.allHeroes[0];
         this.playerController = null;
         this.playerAnim = null;
         this.playerLoco = null;
@@ -130,7 +133,7 @@ class KernelEngine {
     }
 
     async init() {
-        console.log('⚡ [ONYXPURE] Booting Master Kernel Engine...');
+        console.log('[ONYXPURE] Booting Master Kernel Engine...');
 
         // Step 1: Reveal Background Backdrop after Calligraphy begins
         setTimeout(() => {
@@ -142,7 +145,8 @@ class KernelEngine {
 
         // Step 2: Initialize Asset Manager & Probing
         this.updateLoadingProgress(25, 'Memindai Repository & Mendeteksi Aset 3D...');
-        await AssetManager.init();
+        await AssetManager.init(this.renderer);
+        AssetRegistry.auditUsage();
 
         this.updateLoadingProgress(60, 'Menyiapkan Pipeline Audio Spasial & VFX...');
         this.vfx = new VfxManager({
@@ -166,7 +170,7 @@ class KernelEngine {
         // Fail-safe hard timer: guaranteed transition by 2.8s
         setTimeout(() => {
             if (!this.hasTransitionedFromLoading) {
-                console.log('⚡ [Kernel] Auto-transitioning to Lobby.');
+                console.log('[Kernel] Auto-transitioning to Lobby.');
                 this.transitionToLobby();
             }
         }, 2800);
@@ -244,6 +248,25 @@ class KernelEngine {
         this.lobbyPedestalGroup = new THREE.Group();
         this.scene.add(this.lobbyPedestalGroup);
 
+        // Thin Atmospheric Fog for Depth
+        this.scene.fog = new THREE.FogExp2(0x0b1522, 0.0032);
+
+        // Load 360° Fontaine Crystal Skybox for Lobby Background
+        AssetManager.loadTexture(AssetManager.assetUrl('skyboxes_and_banners/skybox_fontaine_crystal.webp'), true).then(tex => {
+            if (tex) {
+                tex.mapping = THREE.EquirectangularReflectionMapping;
+                this.scene.background = tex;
+            }
+        }).catch(() => {});
+
+        // Try load 3D Terrarium Dome Environment GLB
+        AssetManager.loadGLTF(AssetManager.assetUrl('environments_glb/lobby_terrarium.glb')).then(gltf => {
+            if (gltf && this.lobbyPedestalGroup) {
+                gltf.scene.position.set(0, 0, 0);
+                this.lobbyPedestalGroup.add(gltf.scene);
+            }
+        }).catch(() => {});
+
         // Glowing Pedestal Base
         const baseGeo = new THREE.CylinderGeometry(2.4, 2.8, 0.5, 32);
         const baseMat = new THREE.MeshStandardMaterial({
@@ -263,6 +286,26 @@ class KernelEngine {
         ringMesh.rotation.x = Math.PI / 2;
         ringMesh.position.y = 0.01;
         this.lobbyPedestalGroup.add(ringMesh);
+
+        // 100 Floating Glowing Fireflies
+        const fireflyCount = 100;
+        const fireflyGeo = new THREE.BufferGeometry();
+        const fireflyPos = new Float32Array(fireflyCount * 3);
+        for (let i = 0; i < fireflyCount; i++) {
+            fireflyPos[i * 3 + 0] = (Math.random() - 0.5) * 16;
+            fireflyPos[i * 3 + 1] = Math.random() * 5 + 0.2;
+            fireflyPos[i * 3 + 2] = (Math.random() - 0.5) * 16;
+        }
+        fireflyGeo.setAttribute('position', new THREE.BufferAttribute(fireflyPos, 3));
+        const fireflyMat = new THREE.PointsMaterial({
+            color: 0x38bdf8,
+            size: 0.14,
+            transparent: true,
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending
+        });
+        this.lobbyFireflies = new THREE.Points(fireflyGeo, fireflyMat);
+        this.lobbyPedestalGroup.add(this.lobbyFireflies);
 
         // Pedestal Key Light
         const spotLight = new THREE.SpotLight(0x38bdf8, 80, 20, Math.PI / 4, 0.4);
@@ -308,6 +351,42 @@ class KernelEngine {
             this.playerAnim.setState('IDLE');
         } else {
             console.log(`[Kernel] 3D Model for ${hero.name} not found, displaying procedural hero stand.`);
+            const placeholderGroup = new THREE.Group();
+            const bodyGeo = new THREE.CapsuleGeometry(0.35, 1.15, 16, 32);
+            const teamColor = hero.team === 'team_dream' ? 0x38bdf8 : hero.team === 'team_love' ? 0xec4899 : 0xf59e0b;
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: teamColor,
+                roughness: 0.2,
+                metalness: 0.8,
+                emissive: teamColor,
+                emissiveIntensity: 0.4
+            });
+            const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+            bodyMesh.position.y = 1.0;
+            bodyMesh.castShadow = true;
+            placeholderGroup.add(bodyMesh);
+
+            this.playerController = {
+                root: placeholderGroup,
+                bones: {},
+                hero,
+                hp: hero.baseHp || 2600,
+                maxHp: hero.baseHp || 2600,
+                mana: hero.baseMana || 450,
+                maxMana: hero.baseMana || 450,
+                shield: 0,
+                patk: hero.basePatk || 120,
+                matk: hero.baseMatk || 35,
+                pdef: hero.basePdef || 20,
+                mdef: hero.baseMdef || 15,
+                isHero: true
+            };
+            this.playerAnim = {
+                update: () => {},
+                setState: () => {},
+                triggerAttack: () => {}
+            };
+            this.scene.add(this.playerController.root);
         }
     }
 
@@ -320,7 +399,7 @@ class KernelEngine {
         this.hasTransitionedFromLoading = true;
         this.currentState = GAME_STATES.LOBBY;
 
-        console.log('⚡ [Kernel] Entering 42-Hero Selection Lobby...');
+        console.log('[Kernel] Entering 42-Hero Selection Lobby...');
 
         // Fade out loading screen smoothly
         if (this.loadingScreen) {
@@ -370,7 +449,8 @@ class KernelEngine {
     }
 
     async transitionToSandbox(hero) {
-        console.log(`🌿 [Kernel] Entering Mega Terrarium Sandbox with ${hero.name}...`);
+        const heroObj = typeof hero === 'object' ? hero : (getHeroById(hero) || this.selectedHero);
+        console.log(`[Kernel] Entering Mega Terrarium Sandbox with ${heroObj.name}...`);
         this.currentState = GAME_STATES.SANDBOX;
 
         // Hide Lobby UI
@@ -401,7 +481,7 @@ class KernelEngine {
         await this.worldBuilder.init();
 
         // Spawn Player Character
-        await this.spawnPlayer(hero, 0, 0);
+        await this.spawnPlayer(heroObj, 0, 0);
 
         // Setup Skill Executor
         this.skillExecutor = new HeroSkillExecutor({
@@ -410,21 +490,27 @@ class KernelEngine {
             allEntities: []
         });
 
+        // Initialize Realtime Multiplayer Sync
+        if (this.syncEngine) {
+            this.syncEngine.setScene(this.scene);
+            this.syncEngine.init('sandbox_terarium_01', heroObj.id, 'Player');
+        }
+
         // Setup Combat HUD (Sandbox mode)
         if (this.combatContainer) {
             this.combatContainer.style.display = 'block';
             this.combatHudUI = new CombatHudUI({
                 container: this.combatContainer,
-                hero,
+                hero: heroObj,
                 mode: 'sandbox',
                 targetingSystem: this.targeting,
                 onMoveInput: (x, y) => {
                     if (this.playerLoco) {
-                        this.playerLoco.setMoveInput(x, y, this.targeting.camYaw);
+                        this.playerLoco.setMoveInput(x, y, this.targeting?.camYaw || 0);
                         if (Math.hypot(x, y) > 0.1) {
-                            this.playerAnim.setState(this.playerLoco.isSprinting ? 'SPRINT' : 'RUN');
+                            this.playerAnim?.setState(this.playerLoco.isSprinting ? 'SPRINT' : 'RUN');
                         } else {
-                            this.playerAnim.setState('IDLE');
+                            this.playerAnim?.setState('IDLE');
                         }
                     }
                 },
@@ -434,12 +520,13 @@ class KernelEngine {
                 onSkillCast: (key, aimDir, groundPos) => {
                     this.executePlayerSkill(key, aimDir, groundPos);
                 },
-                onFastTravel: (wp) => {
+                onFastTravel: (wpId) => {
+                    const wp = FAST_TRAVEL_WAYPOINTS.find(w => w.id === wpId) || { x: 0, z: 0 };
                     if (this.playerLoco) {
                         const y = getTerrainHeight(wp.x, wp.z, 'sandbox');
                         this.playerLoco.setPosition(wp.x, y, wp.z);
-                        this.vfx.triggerShockwave(new THREE.Vector3(wp.x, y, wp.z), 0x38bdf8, 4.0);
-                        this.audio.playSfx('sfx_ui_confirm');
+                        this.vfx?.triggerShockwave(new THREE.Vector3(wp.x, y, wp.z), 0x38bdf8, 4.0);
+                        this.audio.playSfx('sfx_portal_warp');
                     }
                 },
                 onReturnToLobby: () => {
@@ -450,7 +537,8 @@ class KernelEngine {
     }
 
     async transitionToArena(hero, arenaId = 'arena_colosseum', spellId = 'spell_flicker') {
-        console.log(`⚔️ [Kernel] Entering 5v5 MOBA Arena: ${arenaId} with ${hero.name}...`);
+        const heroObj = typeof hero === 'object' ? hero : (getHeroById(hero) || this.selectedHero);
+        console.log(`[Kernel] Entering 5v5 MOBA Arena: ${arenaId} with ${heroObj.name}...`);
         this.currentState = GAME_STATES.ARENA;
 
         // Hide Lobby UI
@@ -475,7 +563,7 @@ class KernelEngine {
         // Spawn Player (Team Dream Base)
         const spawnX = -75;
         const spawnZ = 0;
-        await this.spawnPlayer(hero, spawnX, spawnZ);
+        await this.spawnPlayer(heroObj, spawnX, spawnZ);
         this.playerController.team = 'team_dream';
 
         // Setup MOBA Objectives (Turrets, Minions, Bosses, Nexus)
@@ -485,7 +573,10 @@ class KernelEngine {
             vfxManager: this.vfx,
             onMatchEnd: (winningTeam) => {
                 this.audio.playBgm(winningTeam === 'team_dream' ? 'bgm_victory' : 'bgm_defeat');
-                alert(winningTeam === 'team_dream' ? '🏆 VICTORY! Nexus Lawan Hancur!' : '💀 DEFEAT! Nexus Kita Hancur!');
+                if (this.combatHudUI) {
+                    this.combatHudUI.triggerKillstreak(winningTeam === 'team_dream' ? 'first_blood' : 'penta');
+                }
+                alert(winningTeam === 'team_dream' ? 'VICTORY! Nexus Lawan Hancur!' : 'DEFEAT! Nexus Kita Hancur!');
             }
         });
 
@@ -497,23 +588,29 @@ class KernelEngine {
         });
 
         // Spawn 4 Allied Bots + 5 Enemy Bots
-        this.spawnBots(hero);
+        this.spawnBots(heroObj);
+
+        // Initialize Realtime Multiplayer Sync
+        if (this.syncEngine) {
+            this.syncEngine.setScene(this.scene);
+            this.syncEngine.init('arena_colosseum_01', heroObj.id, 'Player');
+        }
 
         // Setup Combat HUD (Arena mode)
         if (this.combatContainer) {
             this.combatContainer.style.display = 'block';
             this.combatHudUI = new CombatHudUI({
                 container: this.combatContainer,
-                hero,
+                hero: heroObj,
                 mode: 'arena',
                 targetingSystem: this.targeting,
                 onMoveInput: (x, y) => {
                     if (this.playerLoco) {
-                        this.playerLoco.setMoveInput(x, y, this.targeting.camYaw);
+                        this.playerLoco.setMoveInput(x, y, this.targeting?.camYaw || 0);
                         if (Math.hypot(x, y) > 0.1) {
-                            this.playerAnim.setState(this.playerLoco.isSprinting ? 'SPRINT' : 'RUN');
+                            this.playerAnim?.setState(this.playerLoco.isSprinting ? 'SPRINT' : 'RUN');
                         } else {
-                            this.playerAnim.setState('IDLE');
+                            this.playerAnim?.setState('IDLE');
                         }
                     }
                 },
@@ -534,6 +631,22 @@ class KernelEngine {
     async spawnPlayer(hero, x, z) {
         const gltf = await AssetManager.loadHeroModel(hero.slug || hero.id);
         const templateScene = gltf ? gltf.scene : new THREE.Group();
+
+        if (!gltf) {
+            const bodyGeo = new THREE.CapsuleGeometry(0.35, 1.15, 16, 32);
+            const teamColor = hero.team === 'team_dream' ? 0x38bdf8 : hero.team === 'team_love' ? 0xec4899 : 0xf59e0b;
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: teamColor,
+                roughness: 0.2,
+                metalness: 0.8,
+                emissive: teamColor,
+                emissiveIntensity: 0.4
+            });
+            const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+            bodyMesh.position.y = 1.0;
+            bodyMesh.castShadow = true;
+            templateScene.add(bodyMesh);
+        }
 
         this.playerController = new CharacterRigController({
             hero,
@@ -659,6 +772,9 @@ class KernelEngine {
             if (this.playerAnim) {
                 this.playerAnim.update(dt);
             }
+            if (this.lobbyFireflies) {
+                this.lobbyFireflies.rotation.y += 0.06 * dt;
+            }
             return;
         }
 
@@ -721,6 +837,26 @@ class KernelEngine {
                     ...this.bots
                 ];
                 this.combatHudUI.renderMinimap(this.playerController.position, allMinimapEntities);
+            }
+
+            // Update Realtime Multiplayer Sync & Telemetry
+            if (this.syncEngine && this.playerController && this.playerLoco) {
+                const isMoving = this.playerLoco.velocity ? this.playerLoco.velocity.lengthSq() > 0.01 : false;
+                const animStateId = isMoving ? (this.playerLoco.isSprinting ? 3 : 2) : 0;
+                this.syncEngine.updateLocalPlayer(
+                    this.playerController.root.position,
+                    this.playerLoco.velocity || new THREE.Vector3(),
+                    this.playerController.root.rotation.y,
+                    animStateId,
+                    (this.playerController.hp || 1) / (this.playerController.maxHp || 1),
+                    this.playerLoco.isGrounded,
+                    this.playerLoco.isSprinting,
+                    false
+                );
+                this.syncEngine.update(dt, this.currentState === GAME_STATES.ARENA ? 'arena' : 'sandbox');
+                if (this.combatHudUI) {
+                    this.combatHudUI.setNetworkStats(this.syncEngine.getStats());
+                }
             }
         }
     }

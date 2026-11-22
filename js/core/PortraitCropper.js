@@ -5,59 +5,49 @@
  * In-Memory Dual-Crop Pipeline for 42 JKT48 Member Photos:
  * - Avatar Variant (256×256): Cuts bottom 13% banner & top-left setlist logo (Minimap, Lock Wheel, Killfeed)
  * - Card Variant (440×484): Bust portrait with subtle dark bottom vignette (Hero Select Grid, Loading)
- * - Blob URL Caching + CSS Object-Position Fallback
+ * - Zero 404 Network HEAD checks: Crops directly from source photo in memory.
  */
 
 import { AssetManager } from './AssetManager.js';
+import { AssetRegistry } from './AssetRegistry.js';
 
 class PortraitCropperClass {
     constructor() {
-        this.cache = new Map(); // key: `${slug}_${variant}` -> objectURL
+        this.cache = new Map(); // key: `${slug}_${variant}` -> dataURL
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
     }
 
     /**
-     * Gets or generates cropped portrait URL
+     * Gets or generates cropped portrait URL in memory
      * @param {Object} hero 
      * @param {'avatar'|'card'} variant 
-     * @returns {Promise<string>} Blob URL or direct image URL
+     * @returns {Promise<string>} Data URL or resolved image URL
      */
     async getCroppedPortrait(hero, variant = 'avatar') {
         if (!hero) return '';
 
-        const cacheKey = `${hero.slug}_${variant}`;
+        const cacheKey = `${hero.slug || hero.id}_${variant}`;
         if (this.cache.has(cacheKey)) {
             return this.cache.get(cacheKey);
         }
 
-        // 1. Check if pre-cropped version exists in repository
-        const preCroppedPath = variant === 'avatar' ? hero.avatarCropped : hero.cardCropped;
-        if (preCroppedPath) {
-            const resolvedPre = AssetManager.assetUrl(preCroppedPath);
-            try {
-                const head = await fetch(resolvedPre, { method: 'HEAD' });
-                if (head.ok) {
-                    this.cache.set(cacheKey, resolvedPre);
-                    return resolvedPre;
-                }
-            } catch (_) {}
-        }
-
-        // 2. Load original raw source image
-        const rawUrl = AssetManager.assetUrl(hero.portraitSource);
+        // Resolve raw source photo
+        const rawUrl = AssetRegistry.resolve(hero.portraitSource);
 
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
 
-            // Timeout safety
             const timer = setTimeout(() => {
+                this.cache.set(cacheKey, rawUrl);
                 resolve(rawUrl);
-            }, 1500);
+            }, 1200);
 
             img.onerror = () => {
                 clearTimeout(timer);
+                AssetRegistry.markFailed(rawUrl, 'Portrait Image Failed to Load');
+                this.cache.set(cacheKey, rawUrl);
                 resolve(rawUrl);
             };
 
@@ -93,51 +83,37 @@ class PortraitCropperClass {
 
                         this.ctx.drawImage(img, cx, cy, cw, ch, 0, 0, 440, 484);
 
-                        // Subtle bottom vignette gradient (bottom 18%)
-                        const grad = this.ctx.createLinearGradient(0, 484 * 0.72, 0, 484);
-                        grad.addColorStop(0, 'rgba(11, 15, 25, 0)');
-                        grad.addColorStop(1, 'rgba(11, 15, 25, 0.92)');
+                        // Subtle bottom vignette gradient so nameplate is ultra-legible
+                        const grad = this.ctx.createLinearGradient(0, 320, 0, 484);
+                        grad.addColorStop(0, 'rgba(5, 8, 14, 0)');
+                        grad.addColorStop(1, 'rgba(5, 8, 14, 0.92)');
                         this.ctx.fillStyle = grad;
-                        this.ctx.fillRect(0, 484 * 0.72, 440, 484 * 0.28);
+                        this.ctx.fillRect(0, 320, 440, 164);
 
-                        croppedUrl = this.canvas.toDataURL('image/webp', 0.90);
+                        croppedUrl = this.canvas.toDataURL('image/webp', 0.92);
                     }
 
                     this.cache.set(cacheKey, croppedUrl);
+                    AssetRegistry.markUsed(hero.portraitSource);
                     resolve(croppedUrl);
                 } catch (e) {
-                    console.warn('[PortraitCropper] Canvas export restricted, using CSS fallback:', e);
                     this.cache.set(cacheKey, rawUrl);
                     resolve(rawUrl);
                 }
-            };
-
-            img.onerror = () => {
-                console.warn(`[PortraitCropper] Failed to load ${rawUrl}`);
-                resolve(rawUrl);
             };
 
             img.src = rawUrl;
         });
     }
 
-    /**
-     * Helper to apply CSS fallback classes to image elements
-     * @param {HTMLImageElement} imgElement 
-     * @param {'avatar'|'card'} variant 
-     */
-    applyCssCropFallback(imgElement, variant = 'avatar') {
-        if (!imgElement) return;
-        imgElement.classList.add('portrait-crop-fallback');
-        if (variant === 'avatar') {
-            imgElement.style.objectFit = 'cover';
-            imgElement.style.objectPosition = '52% 14%';
-            imgElement.style.transform = 'scale(1.28)';
-        } else {
-            imgElement.style.objectFit = 'cover';
-            imgElement.style.objectPosition = '50% 12%';
-            imgElement.style.transform = 'scale(1.12)';
-        }
+    preloadAllRoster(heroes, onProgress = null) {
+        if (!heroes || !heroes.length) return Promise.resolve();
+        let loaded = 0;
+        return Promise.all(heroes.map(async (h) => {
+            await this.getCroppedPortrait(h, 'card');
+            loaded++;
+            if (onProgress) onProgress(loaded, heroes.length);
+        }));
     }
 }
 

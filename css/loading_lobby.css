@@ -2,11 +2,15 @@
  * ONYXPURE — JKT48 3D MOBA × OPEN-WORLD ARENA
  * css/loading_lobby.css
  * 
- * Styles for Dark Obsidian Luxury Loading Screen & 42-Hero Selection Lobby
+ * Master Styles for Dark Obsidian Luxury Loading Screen & AAA Hero Select Lobby:
+ * - 45% clear center screen with 360° Three.js canvas
+ * - Floating glass panels (Roster left 290px, Inspector right 320px with bottom 112px clearance)
+ * - Dedicated Launch Dock (#lobby-launch-dock, z-index: 9999, fixed bottom right)
+ * - Zero emoji, 100% asset-bound styling
  */
 
 /* ==========================================================================
-   1. LOADING SCREEN (Pure Black Initial -> Calligraphy Draw -> BG Reveal -> Lobby)
+   1. LOADING SCREEN
    ========================================================================== */
 .loading-screen {
     position: fixed;
@@ -17,7 +21,7 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    background-color: #000000; /* Pure black on start! */
+    background-color: #000000; /* Pure pitch black on start! */
     transition: opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -26,13 +30,13 @@
     pointer-events: none;
 }
 
-/* Background image from asset list (fades in after calligraphy begins) */
 .loading-bg-backdrop {
     position: absolute;
     inset: 0;
     background-image: 
         radial-gradient(ellipse at center, rgba(5, 8, 14, 0.35) 0%, rgba(2, 4, 7, 0.90) 75%, #000000 100%),
-        url('../models/skyboxes_and_banners/bg_loading_onyxpure.webp');
+        url('../models/skyboxes_and_banners/bg_loading_onyxpure.webp'),
+        url('https://onyxpure.my.id/models/skyboxes_and_banners/bg_loading_onyxpure.webp');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -42,7 +46,7 @@
 }
 
 .loading-bg-backdrop.fade-in {
-    opacity: 0.88;
+    opacity: 0.90;
 }
 
 .loading-particles {
@@ -75,14 +79,13 @@
     text-align: center;
 }
 
-/* Celestial Pure White Crest Vector */
 .brand-crest-box {
-    width: 150px;
-    height: 125px;
+    width: 140px;
+    height: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     animation: crestBob 4s ease-in-out infinite;
     filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 28px rgba(56, 189, 248, 0.55));
 }
@@ -97,536 +100,822 @@
     height: 100%;
 }
 
-/* Calligraphy Brush Animation & Typography */
-.calligraphy-wrap {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-top: 4px;
-    margin-bottom: 2px;
-}
-
-.calligraphy-svg {
-    width: 480px;
-    max-width: 90vw;
-    height: 78px;
-    display: block;
-    margin-bottom: -16px;
-}
-
-@keyframes brushDraw {
-    to {
-        stroke-dashoffset: 0;
-    }
+.brand-title-wrap {
+    margin: 8px 0 4px 0;
 }
 
 .brand-title-calligraphy {
     font-family: var(--font-calligraphy);
-    font-size: 4.8rem;
+    font-size: clamp(2.8rem, 6.5vw, 4.8rem);
     font-weight: 900;
-    letter-spacing: 0.14em;
-    line-height: 1.05;
-    background: linear-gradient(135deg, #ffffff 0%, #fbbf24 45%, #38bdf8 85%, #fbbf24 100%);
+    letter-spacing: 0.16em;
+    background: linear-gradient(135deg, #ffffff 0%, #fef08a 35%, #fbbf24 60%, #38bdf8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 35px rgba(251, 191, 36, 0.65));
-    animation: calligraphyGlow 3s ease-in-out infinite alternate;
-}
-
-@keyframes calligraphyGlow {
-    from {
-        filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 25px rgba(251, 191, 36, 0.5));
-    }
-    to {
-        filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 45px rgba(56, 189, 248, 0.85));
-    }
+    filter: drop-shadow(0 0 24px rgba(251, 191, 36, 0.45)) drop-shadow(0 0 48px rgba(56, 189, 248, 0.35));
+    line-height: 1.1;
+    margin: 0;
 }
 
 .brand-subtitle {
-    margin-top: 8px;
-    margin-bottom: 6px;
-    font-size: 0.95rem;
+    margin-bottom: 24px;
+}
+
+.brand-subtitle .sub-text {
+    font-size: 0.82rem;
     font-weight: 700;
-    letter-spacing: 0.14em;
-    color: var(--text-secondary);
-    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+    letter-spacing: 0.28em;
+    color: #94a3b8;
+    text-transform: uppercase;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
 }
 
 .loading-bar-track {
-    width: 360px;
-    max-width: 82vw;
-    height: 7px;
-    background: rgba(15, 23, 42, 0.88);
+    width: clamp(280px, 45vw, 480px);
+    height: 16px;
+    background: url('../models/ui_assets/bar_frame_bg.webp') center / 100% 100% no-repeat,
+                url('https://onyxpure.my.id/models/ui_assets/bar_frame_bg.webp') center / 100% 100% no-repeat,
+                rgba(5, 8, 14, 0.85);
     border-radius: 999px;
-    margin-top: 24px;
-    overflow: hidden;
+    padding: 3px;
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.85), inset 0 1px 3px rgba(0,0,0,0.8);
     position: relative;
-    border: 1px solid rgba(56, 189, 248, 0.4);
-    box-shadow: 0 0 24px rgba(0, 0, 0, 0.9);
+    overflow: hidden;
 }
 
 .loading-bar-fill {
-    width: 0%;
     height: 100%;
-    background: linear-gradient(90deg, var(--dream) 0%, #10b981 50%, var(--gold) 100%);
+    width: 0%;
+    background: url('../models/ui_assets/bar_mana_fill.webp') center / cover repeat-x,
+                url('https://onyxpure.my.id/models/ui_assets/bar_mana_fill.webp') center / cover repeat-x,
+                linear-gradient(90deg, #0284c7, #38bdf8, #f59e0b);
     border-radius: 999px;
-    box-shadow: 0 0 18px var(--gold);
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.85);
     transition: width 0.35s ease;
 }
 
 .loading-status-text {
     margin-top: 14px;
     font-size: 0.85rem;
-    color: var(--text-secondary);
     font-weight: 600;
-    letter-spacing: 0.04em;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+    color: #cbd5e1;
+    letter-spacing: 0.05em;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.9);
 }
 
 .btn-skip-loading {
     margin-top: 24px;
-    padding: 12px 34px;
+    padding: 10px 24px;
+    background: rgba(8, 13, 24, 0.82);
+    border: 1px solid rgba(251, 191, 36, 0.55);
     border-radius: 999px;
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(16px);
-    border: 1.5px solid rgba(251, 191, 36, 0.8);
     color: #ffffff;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     font-weight: 800;
-    letter-spacing: 0.08em;
-    box-shadow: 0 4px 22px rgba(0, 0, 0, 0.8), 0 0 20px rgba(251, 191, 36, 0.35);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     cursor: pointer;
-    pointer-events: auto;
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.25);
     transition: all 0.25s ease;
 }
 
 .btn-skip-loading:hover {
-    background: rgba(251, 191, 36, 0.25);
-    border-color: #ffffff;
+    background: rgba(251, 191, 36, 0.18);
+    border-color: #fbbf24;
     transform: translateY(-2px);
-    box-shadow: 0 6px 30px rgba(251, 191, 36, 0.6);
+    box-shadow: 0 0 28px rgba(251, 191, 36, 0.5);
 }
 
 /* ==========================================================================
-   2. HERO SELECTION LOBBY & MEGA TERRARIUM 220M
+   2. SLIM TOP BAR (54px)
    ========================================================================== */
 .lobby-screen {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    display: flex;
-    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
-    pointer-events: auto;
+    pointer-events: none; /* Let 3D canvas receive drag events in open center */
+    z-index: 20;
 }
 
-/* Top Navigation Bar */
 .lobby-header {
-    height: 56px;
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border-subtle);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 54px;
+    background: rgba(8, 13, 24, 0.88);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 16px;
     z-index: 50;
     backdrop-filter: blur(16px);
+    pointer-events: auto;
 }
 
 .header-left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+}
+
+.brand-crest-mini {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.6));
 }
 
 .brand-badge {
     font-family: var(--font-calligraphy);
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     font-weight: 900;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     color: var(--gold);
-    text-shadow: 0 0 15px var(--gold-glow);
+    text-shadow: 0 0 12px var(--gold-glow);
 }
 
 .rank-badge-box {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    font-size: 0.82rem;
+    gap: 6px;
+    padding: 3px 10px;
+    background: rgba(18, 24, 38, 0.85);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    border-radius: 6px;
+    font-size: 0.78rem;
     font-weight: 700;
+    color: #f8fafc;
+}
+
+.rank-icon-mini {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
 }
 
 .header-currencies {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 10px;
 }
 
 .curr-pill {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(0, 0, 0, 0.4);
-    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 4px 10px;
     border-radius: 999px;
-    border: 1px solid var(--border-subtle);
-    font-size: 0.82rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.78rem;
     font-weight: 700;
+}
+
+.ui-icon-curr {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
 }
 
 .header-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
 }
 
 .btn-header-icon {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     border-radius: 8px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
+    background: rgba(18, 24, 38, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .btn-header-icon:hover {
-    background: var(--bg-card-hover);
+    background: rgba(56, 189, 248, 0.2);
     border-color: var(--dream);
     transform: translateY(-2px);
 }
 
-/* Lobby Main Content Area */
-.lobby-body {
-    flex: 1;
-    position: relative;
-    display: flex;
-    overflow: hidden;
+.ui-icon-nav {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
 }
 
-/* Left: Roster List */
+/* ==========================================================================
+   3. LEFT ROSTER PANEL (Fixed top: 66px, left: 16px, bottom: 16px, width: 290px)
+   ========================================================================== */
 .roster-panel {
-    width: 380px;
-    max-width: 35vw;
-    background: var(--bg-panel);
-    border-right: 1px solid var(--border-subtle);
+    position: fixed;
+    top: 66px;
+    left: 16px;
+    bottom: 16px;
+    width: 290px;
+    background: rgba(8, 13, 24, 0.75);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    z-index: 40;
     display: flex;
     flex-direction: column;
-    z-index: 10;
-    backdrop-filter: blur(16px);
+    overflow: hidden;
+    pointer-events: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
-.roster-tabs {
+.roster-top-search {
+    padding: 10px 12px;
     display: flex;
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.roster-tab {
-    flex: 1;
-    padding: 12px 8px;
-    text-align: center;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    transition: all 0.2s ease;
-    border-bottom: 2px solid transparent;
-}
-
-.roster-tab.active {
-    color: #ffffff;
-    border-bottom-color: var(--dream);
-    background: rgba(56, 189, 248, 0.08);
-}
-
-.roster-filters {
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 8px;
-    border-bottom: 1px solid var(--border-subtle);
+    background: rgba(0, 0, 0, 0.35);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ui-icon-search {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    opacity: 0.7;
 }
 
 .search-input {
-    width: 100%;
-    padding: 8px 14px;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid var(--border-subtle);
+    flex: 1;
+    background: none;
+    border: none;
     color: #ffffff;
-    font-size: 0.84rem;
+    font-size: 0.8rem;
     outline: none;
 }
 
-.search-input:focus {
-    border-color: var(--dream);
-}
-
-.toggle-ready-box {
+.roster-team-tabs {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.roster-grid {
+.team-tab-btn {
     flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.roster-card {
+    height: 38px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
+    justify-content: center;
+    border: none;
+    background: rgba(0, 0, 0, 0.2);
     cursor: pointer;
     transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: var(--text-muted);
+}
+
+.team-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+}
+
+.team-tab-btn.active {
+    background: rgba(56, 189, 248, 0.14);
+    border-bottom-color: var(--dream);
+    color: #ffffff;
+}
+
+.tab-crest-img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+
+.roster-quick-filters {
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2px;
+}
+
+.btn-filter-icon {
+    flex: 1;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+}
+
+.btn-filter-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.btn-filter-icon.active {
+    background: rgba(251, 191, 36, 0.18);
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.ui-filter-img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+/* 3-Column Roster Grid */
+.roster-grid-3col {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.4) transparent;
+}
+
+.hero-card-3col {
+    aspect-ratio: 3 / 4;
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    background: rgba(18, 24, 38, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hero-card-3col:hover {
+    transform: scale(1.04);
+    border-color: var(--dream);
+    box-shadow: 0 4px 16px rgba(56, 189, 248, 0.35);
+    z-index: 5;
+}
+
+.hero-card-3col.active {
+    border-color: var(--gold);
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.6);
+    transform: scale(1.05);
+    z-index: 6;
+}
+
+.hero-card-3col.hero-playable-3d {
+    border: 1.5px solid rgba(251, 191, 36, 0.7);
+}
+
+.hero-card-3col.hero-preview {
+    opacity: 0.82;
+}
+
+.card-img-wrap {
+    width: 100%;
+    height: 100%;
     position: relative;
 }
 
-.roster-card:hover {
-    background: var(--bg-card-hover);
-    border-color: rgba(255, 255, 255, 0.25);
-    transform: translateX(4px);
-}
-
-.roster-card.active {
-    background: rgba(56, 189, 248, 0.16);
-    border-color: var(--dream);
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.35);
-}
-
-.card-avatar-box {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    overflow: hidden;
-    background: #000000;
-    border: 2px solid var(--border-subtle);
-    flex-shrink: 0;
-}
-
-.card-avatar-img {
+.hero-card-thumb {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 54% 16%;
+    object-position: center top;
 }
 
-.card-info {
-    flex: 1;
-    min-width: 0;
+.badge-3d-active {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    color: #ffffff;
+    font-size: 0.62rem;
+    font-weight: 900;
+    padding: 1px 5px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    letter-spacing: 0.05em;
 }
 
-.card-name {
-    font-weight: 700;
-    font-size: 0.95rem;
+.card-team-crest {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+}
+
+.card-gradient-overlay {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 38%;
+    background: linear-gradient(to top, rgba(5, 8, 14, 0.95) 0%, rgba(5, 8, 14, 0.5) 60%, transparent 100%);
+    display: flex;
+    align-items: flex-end;
+    padding: 4px 6px;
+}
+
+.card-hero-name {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
 }
 
-.card-meta {
-    font-size: 0.76rem;
-    color: var(--text-muted);
-}
-
-.badge-3d-ready {
-    position: absolute;
-    right: 12px;
-    top: 10px;
-    font-size: 0.65rem;
+.roster-group-separator {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 0.64rem;
     font-weight: 800;
-    color: #10b981;
-    background: rgba(16, 185, 129, 0.15);
-    border: 1px solid #10b981;
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-/* Center 3D Viewport */
-.center-viewport {
-    flex: 1;
-    position: relative;
-    pointer-events: none;
-}
-
-/* Right: Hero Inspector & Mode Selection */
-.inspector-panel {
-    width: 420px;
-    max-width: 40vw;
-    background: var(--bg-panel);
-    border-left: 1px solid var(--border-subtle);
-    display: flex;
-    flex-direction: column;
-    padding: 24px;
-    z-index: 10;
-    overflow-y: auto;
-    backdrop-filter: blur(16px);
-}
-
-.inspector-hero-header {
-    margin-bottom: 20px;
-}
-
-.inspector-hero-name {
-    font-size: 2.2rem;
-    font-weight: 900;
-    line-height: 1.1;
-}
-
-.inspector-hero-title {
-    font-size: 0.88rem;
-    color: var(--dream);
-    font-weight: 600;
+    color: #64748b;
+    letter-spacing: 0.12em;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     margin-top: 4px;
 }
 
-.inspector-section-title {
-    font-size: 0.8rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    margin: 16px 0 8px 0;
-}
-
-.skill-cards-grid {
+/* ==========================================================================
+   4. RIGHT INSPECTOR PANEL (Fixed top: 66px, right: 16px, bottom: 112px, width: 320px)
+   ========================================================================== */
+.inspector-panel {
+    position: fixed;
+    top: 66px;
+    right: 16px;
+    bottom: 112px; /* Leaves room for dedicated launch dock! */
+    width: 320px;
+    background: rgba(8, 13, 24, 0.75);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    z-index: 40;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    padding: 14px;
+    gap: 10px;
+    overflow-y: auto;
+    pointer-events: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.4) transparent;
 }
 
-.skill-card {
+.inspector-hero-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 8px;
+}
+
+.inspector-hero-title-row {
     display: flex;
-    gap: 12px;
-    padding: 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.skill-icon-box {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid var(--border-glass);
-    overflow: hidden;
-    flex-shrink: 0;
+.inspector-hero-name {
+    font-family: var(--font-calligraphy);
+    font-size: 1.55rem;
+    font-weight: 900;
+    color: #ffffff;
+    margin: 0;
+    text-shadow: 0 0 16px rgba(255, 255, 255, 0.35);
+}
+
+.insp-team-crest-img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.inspector-badges-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.insp-role-badge, .insp-lane-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #cbd5e1;
+}
+
+.ui-icon-mini {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+}
+
+/* 4 Skills + Weapon Cluster */
+.inspector-skills-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 0;
+}
+
+.skill-circle-wrap {
+    width: 48px;
+    height: 48px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.skill-circle-wrap:hover {
+    transform: scale(1.12);
+}
+
+.skill-frame-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 2;
+    pointer-events: none;
 }
 
 .skill-icon-img {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    inset: 4px;
+    width: calc(100% - 8px);
+    height: calc(100% - 8px);
+    border-radius: 50%;
     object-fit: cover;
+    z-index: 1;
 }
 
-.skill-card-body {
-    flex: 1;
-    min-width: 0;
+.weapon-preview-icon {
+    transform: rotate(-18deg);
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.7));
 }
 
-.skill-card-name {
-    font-size: 0.85rem;
-    font-weight: 700;
+.skill-detail-tooltip {
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.75rem;
 }
 
-.skill-card-desc {
-    font-size: 0.74rem;
+.skill-desc-name {
+    font-weight: 800;
+    color: var(--gold);
+    margin-bottom: 2px;
+}
+
+.skill-desc-body {
     color: var(--text-secondary);
     line-height: 1.35;
-    margin-top: 2px;
 }
 
-/* Map Selector */
-.arena-cards-row {
+.inspector-audition-row {
     display: flex;
     gap: 8px;
-    margin-top: 6px;
 }
 
-.arena-card-pick {
+.btn-audition {
     flex: 1;
-    padding: 10px 6px;
-    text-align: center;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    font-size: 0.76rem;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 0.74rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
-.arena-card-pick.active {
-    background: rgba(245, 158, 11, 0.16);
-    border-color: var(--passion);
-    color: var(--passion);
+.btn-audition:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: var(--dream);
 }
 
-/* Dual Launch Buttons */
-.launch-buttons-cluster {
-    display: flex;
-    gap: 12px;
-    margin-top: 28px;
+.ui-icon-btn-sm {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
 }
 
-.btn-launch-mode {
-    flex: 1;
-    padding: 16px 14px;
-    border-radius: 12px;
+.inspector-section-label {
+    font-size: 0.7rem;
     font-weight: 800;
-    font-size: 0.88rem;
-    letter-spacing: 0.05em;
+    color: #64748b;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+}
+
+/* Battle Spells Row */
+.spells-picker-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.spell-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     cursor: pointer;
+    object-fit: contain;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 4px;
+    transition: all 0.15s ease;
+}
+
+.spell-thumb:hover {
+    border-color: var(--dream);
+    transform: scale(1.08);
+}
+
+.spell-thumb.active {
+    border-color: var(--gold);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+    background: rgba(251, 191, 36, 0.15);
+}
+
+/* Arena Compact Cards (62px) */
+.arena-picker-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.arena-card-thumb {
+    height: 52px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.arena-card-thumb:hover {
+    border-color: var(--dream);
+    transform: translateY(-2px);
+}
+
+.arena-card-thumb.active {
+    border: 1.5px solid var(--gold);
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.5);
+}
+
+.arena-bg-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.arena-card-name {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 4px 8px;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+/* ==========================================================================
+   5. DEDICATED LAUNCH DOCK (#lobby-launch-dock)
+   ========================================================================== */
+.lobby-launch-dock {
+    position: fixed;
+    bottom: 18px;
+    right: 16px;
+    width: 320px;
+    height: 56px;
+    z-index: 9999;
+    pointer-events: auto;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-dock-action {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    border: none;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0 12px;
 }
 
-.btn-launch-mode:hover {
-    transform: translateY(-2px);
+.btn-dock-action:hover {
+    transform: translateY(-3px) scale(1.02);
 }
 
-.btn-launch-sandbox {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.85) 0%, rgba(5, 150, 105, 0.95) 100%);
-    border: 1px solid #34d399;
+.btn-dock-arena {
+    flex: 1.2;
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
     color: #ffffff;
+    box-shadow: 0 4px 20px rgba(234, 88, 12, 0.45);
 }
 
-.btn-launch-sandbox:hover {
-    box-shadow: 0 6px 25px rgba(16, 185, 129, 0.55);
+.btn-dock-arena:hover {
+    box-shadow: 0 6px 28px rgba(234, 88, 12, 0.7);
 }
 
-.btn-launch-arena {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(217, 119, 6, 0.95) 100%);
-    border: 1px solid #fbbf24;
+.btn-dock-sandbox {
+    flex: 1;
+    background: linear-gradient(135deg, #06b6d4, #10b981);
     color: #ffffff;
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.45);
 }
 
-.btn-launch-arena:hover {
-    box-shadow: 0 6px 25px rgba(245, 158, 11, 0.55);
+.btn-dock-sandbox:hover {
+    box-shadow: 0 6px 28px rgba(16, 185, 129, 0.7);
+}
+
+.ui-icon-dock {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+
+.btn-dock-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.dock-title {
+    font-size: 0.84rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    line-height: 1.1;
+}
+
+.dock-sub {
+    font-size: 0.65rem;
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+/* Mobile Responsiveness for Launch Dock */
+@media (max-width: 768px) {
+    .roster-panel {
+        width: 140px;
+        left: 8px;
+        top: 60px;
+        bottom: 80px;
+    }
+    .roster-grid-3col {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .inspector-panel {
+        display: none; /* Collapses on small phone screens to keep canvas open */
+    }
+    .lobby-launch-dock {
+        left: 8px;
+        right: 8px;
+        width: auto;
+        bottom: 12px;
+    }
 }

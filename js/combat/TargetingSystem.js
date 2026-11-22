@@ -6,7 +6,7 @@
  * - Dual Camera Switcher (Genshin 3D Action vs MLBB Tactical Isometric)
  * - 4-Layer Target Lock (Auto Soft-Lock, Hard-Lock Hero Wheel, Minion/Turret Priority)
  * - Quick-Tap vs Hold-and-Drag 3D Ground Reticle Projections adhering to Terrain
- * - Red Cancel Zone (✕)
+ * - Red Cancel Zone (icon_cancel.webp)
  */
 
 import * as THREE from 'three';
@@ -169,11 +169,16 @@ export class TargetingSystem {
         return result;
     }
 
+    update(dt) {
+        this.updateTargeting();
+        this.updateCamera(dt);
+    }
+
     /**
      * Finds and updates auto soft-target and hero wheel candidates
      */
     updateTargeting(range = 14) {
-        if (!this.player) return;
+        if (!this.player || !this.player.position) return;
 
         // Scan valid enemies
         const enemies = this.entities.filter(e => e && e.hp > 0 && e.team !== this.player.team);
@@ -231,7 +236,7 @@ export class TargetingSystem {
     }
 
     updateCamera(dt) {
-        if (!this.player) return;
+        if (!this.player || !this.player.position) return;
 
         const targetPos = this.player.position;
 

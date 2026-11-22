@@ -5,10 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ONYXPURE — JKT48 3D MOBA & Open-World Arena</title>
 
-    <!-- Luxury Typography: Cinzel Decorative, Yuji Boku (Calligraphy) & Plus Jakarta Sans (Clean Modern Luxury) -->
+    <!-- Auto-Redirect if user opened directly via Windows Explorer (file:///) -->
+    <script>
+    if (window.location.protocol === 'file:') {
+        // Modern browsers block WebGL ES modules & fetch on file:///. Auto-redirect to local server:
+        window.location.replace('http://127.0.0.1:8080/index.html');
+    }
+    </script>
+
+    <!-- Luxury Typography: Cinzel Decorative & Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Yuji+Boku&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <!-- Design System Modular Stylesheets -->
     <link rel="stylesheet" href="./css/tokens.css">
@@ -32,10 +40,10 @@
     <canvas id="game-canvas"></canvas>
 
     <!-- =======================================================================
-         1. LOADING SCREEN (Pure Black Initial -> Calligraphy Draw -> BG Reveal -> Lobby)
+         1. LOADING SCREEN (Pure Black Initial -> ONYXPURE Calligraphy -> BG Reveal -> Lobby)
          ======================================================================= -->
     <div id="loading-screen" class="loading-screen">
-        <!-- Background Image from Asset list (fades in after calligraphy begins) -->
+        <!-- Background Image from Asset list (fades in after title appears) -->
         <div id="loading-bg-backdrop" class="loading-bg-backdrop"></div>
         <div class="loading-particles"></div>
 
@@ -78,45 +86,12 @@
                 </svg>
             </div>
 
-            <!-- Authentic Japanese Shodo Brush / Calligraphy Drawing Animation -->
-            <div class="calligraphy-wrap">
-                <svg class="calligraphy-svg" viewBox="0 0 710 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <linearGradient id="brushGold" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="#ffffff"/>
-                            <stop offset="28%" stop-color="#fbbf24"/>
-                            <stop offset="72%" stop-color="#38bdf8"/>
-                            <stop offset="100%" stop-color="#fbbf24"/>
-                        </linearGradient>
-                        <filter id="brushGlow">
-                            <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="rgba(251, 191, 36, 0.85)"/>
-                            <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="rgba(56, 189, 248, 0.5)"/>
-                        </filter>
-                    </defs>
-                    <g stroke="url(#brushGold)" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" filter="url(#brushGlow)">
-                        <!-- O -->
-                        <path class="shodo-path" d="M 68 28 C 36 28, 22 50, 22 66 C 22 84, 38 100, 68 100 C 96 100, 112 84, 112 65 C 112 46, 96 28, 68 28 Z" style="stroke-dasharray: 290; stroke-dashoffset: 290; animation: brushDraw 0.75s ease forwards 0.12s;"/>
-                        <!-- N -->
-                        <path class="shodo-path" d="M 136 98 L 136 32 L 194 98 L 194 32" style="stroke-dasharray: 260; stroke-dashoffset: 260; animation: brushDraw 0.75s ease forwards 0.32s;"/>
-                        <!-- Y -->
-                        <path class="shodo-path" d="M 220 32 L 250 66 L 280 32 M 250 66 L 250 98" style="stroke-dasharray: 190; stroke-dashoffset: 190; animation: brushDraw 0.75s ease forwards 0.48s;"/>
-                        <!-- X -->
-                        <path class="shodo-path" d="M 306 32 L 358 98 M 358 32 L 306 98" style="stroke-dasharray: 210; stroke-dashoffset: 210; animation: brushDraw 0.75s ease forwards 0.62s;"/>
-                        <!-- P -->
-                        <path class="shodo-path" d="M 390 98 L 390 32 L 428 32 C 448 32, 456 44, 456 56 C 456 68, 446 76, 426 76 L 390 76" style="stroke-dasharray: 250; stroke-dashoffset: 250; animation: brushDraw 0.75s ease forwards 0.76s;"/>
-                        <!-- U -->
-                        <path class="shodo-path" d="M 488 32 L 488 80 C 488 94, 498 100, 516 100 C 534 100, 544 94, 544 80 L 544 32" style="stroke-dasharray: 230; stroke-dashoffset: 230; animation: brushDraw 0.75s ease forwards 0.88s;"/>
-                        <!-- R -->
-                        <path class="shodo-path" d="M 574 98 L 574 32 L 608 32 C 624 32, 632 42, 632 54 C 632 65, 622 72, 604 72 L 574 72 M 604 72 L 632 98" style="stroke-dasharray: 270; stroke-dashoffset: 270; animation: brushDraw 0.75s ease forwards 0.98s;"/>
-                        <!-- E -->
-                        <path class="shodo-path" d="M 696 32 L 656 32 L 656 98 L 696 98 M 656 65 L 688 65" style="stroke-dasharray: 210; stroke-dashoffset: 210; animation: brushDraw 0.75s ease forwards 1.08s;"/>
-                    </g>
-                </svg>
-                <!-- Majestic Calligraphy Typography Layer -->
+            <!-- Single Majestic Calligraphy Title (NO DUPLICATES!) -->
+            <div class="brand-title-wrap">
                 <h1 class="brand-title-calligraphy">ONYXPURE</h1>
             </div>
 
-            <!-- Clean Subtitle (Zero Reia mention) -->
+            <!-- Clean Subtitle -->
             <div class="brand-subtitle">
                 <span class="sub-text">JKT48 3D MOBA & OPEN-WORLD ARENA</span>
             </div>
@@ -131,10 +106,10 @@
                 Menginisialisasi WebGL 3D Pipeline...
             </div>
 
-            <!-- Instant Fast Access Button (Always Clickable) -->
-            <button id="btn-skip-loading" class="btn-skip-loading" onclick="window.enterLobbyNow ? window.enterLobbyNow() : null">
+            <!-- Instant Fast Access Button (Guaranteed to work on file:// and http://) -->
+            <button id="btn-skip-loading" class="btn-skip-loading" onclick="if(window.location.protocol==='file:'){window.location.href='http://127.0.0.1:8080/index.html';}else if(window.enterLobbyNow){window.enterLobbyNow();}">
                 <span>MASUK LOBI SEKARANG</span>
-                <span class="btn-arrow">➔</span>
+                <img src="./models/ui_mega_pack/system/icon_back.webp" onerror="this.src='https://onyxpure.my.id/models/ui_mega_pack/system/icon_back.webp'" style="transform: rotate(180deg); width: 14px; height: 14px; vertical-align: middle;" alt="Enter">
             </button>
         </div>
     </div>

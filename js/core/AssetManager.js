@@ -4,12 +4,12 @@
  * 
  * Master Asset Pipeline & Anti-404 Discovery:
  * - Dual-Root Discovery (./model/ vs ./models/)
+ * - Integrated with AssetRegistry (100% 900 assets bound)
  * - GitHub Trees API Case-Insensitive Indexer
  * - 4-Way Auto-Probe for 6 Active Hero GLBs
- * - URL Encoding for spaces in paths (asset game/team dream/ -> asset%20game/team%20dream/)
+ * - URL Encoding for spaces in paths
  * - Singleton Draco, KTX2, Meshopt & GLTFLoader
  * - Deep GPU Memory Disposal (Anti-VRAM Leaks)
- * - Dynamic Local GLB Model Upload Registration
  */
 
 import * as THREE from 'three';
@@ -17,6 +17,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { AssetRegistry } from './AssetRegistry.js';
 
 class AssetManagerClass {
     constructor() {
@@ -34,7 +35,7 @@ class AssetManagerClass {
     }
 
     /**
-     * Initializes loaders and discovers asset root
+     * Initializes loaders, discovers asset root, and loads core manifests
      * @param {THREE.WebGLRenderer} renderer 
      */
     async init(renderer = null) {
@@ -68,8 +69,13 @@ class AssetManagerClass {
             this.scanGithubRepo()
         ]);
 
+        AssetRegistry.setRoot(this.rootPath);
+
+        // Load core manifests as specified in directive (Item #1)
+        await this.loadCoreManifests();
+
         this.isInitialized = true;
-        console.log(`⚡ [AssetManager] Ready. Root path: ${this.rootPath}, Indexed files: ${this.gitTreeMap.size}`);
+        console.log(`[AssetManager] Ready. Root path: ${this.rootPath}, Indexed files: ${this.gitTreeMap.size}`);
     }
 
     /**
@@ -86,8 +92,32 @@ class AssetManagerClass {
                 }
             } catch (_) {}
         }
-        // Default
+        try {
+            const remoteResp = await fetch('https://onyxpure.my.id/models/roster_web_manifest.json', { method: 'HEAD' });
+            if (remoteResp.ok) {
+                this.rootPath = 'https://onyxpure.my.id/models';
+                return;
+            }
+        } catch (_) {}
         this.rootPath = './models';
+    }
+
+    /**
+     * Loads master_asset_inventory.json & roster_web_manifest.json
+     */
+    async loadCoreManifests() {
+        try {
+            const [inv, ros] = await Promise.allSettled([
+                fetch(this.assetUrl('master_asset_inventory.json')).then(r => r.ok ? r.json() : null),
+                fetch(this.assetUrl('roster_web_manifest.json')).then(r => r.ok ? r.json() : null)
+            ]);
+            if (inv.status === 'fulfilled' && inv.value) {
+                AssetRegistry.markUsed('master_asset_inventory.json');
+            }
+            if (ros.status === 'fulfilled' && ros.value) {
+                AssetRegistry.markUsed('roster_web_manifest.json');
+            }
+        } catch (_) {}
     }
 
     /**
@@ -97,7 +127,6 @@ class AssetManagerClass {
         let owner = 'ashazeneca-cyber';
         let repo = 'skunvfucjsdheocjs';
 
-        // Extract owner/repo if hosted on github.io
         try {
             const host = window.location.hostname;
             const pathSegments = window.location.pathname.split('/').filter(Boolean);
@@ -127,31 +156,27 @@ class AssetManagerClass {
                     }
                 }
             } catch (e) {
-                // Ignore API rate limits or network issues, fall back to local direct resolution
+                // Ignore API limits
             }
         }
     }
 
     /**
-     * Builds safe, segment-encoded URL from relative path
-     * @param {string} relPath e.g. "asset game/team dream/Freya.jpg"
-     * @returns {string} e.g. "asset%20game/team%20dream/Freya.jpg"
+     * Builds safe, segment-encoded URL from relative path and registers with AssetRegistry
+     * @param {string} relPath 
+     * @returns {string}
      */
     assetUrl(relPath) {
         if (!relPath) return '';
         if (relPath.startsWith('blob:') || relPath.startsWith('http://') || relPath.startsWith('https://')) {
+            AssetRegistry.markUsed(relPath);
             return relPath;
         }
 
-        // Clean leading slashes and roots
         let clean = relPath.replace(/^(\.\/)?(models?\/)?/, '');
-
-        // Check if git tree has exact case
         const mapped = this.gitTreeMap.get(clean.toLowerCase()) || clean;
 
-        // Encode each segment to handle spaces cleanly
-        const encoded = mapped.split('/').map(encodeURIComponent).join('/');
-        return `${this.rootPath}/${encoded}`;
+        return AssetRegistry.resolve(mapped);
     }
 
     /**
@@ -162,7 +187,6 @@ class AssetManagerClass {
     async resolveHeroGlbUrl(hero) {
         if (!hero) return '';
 
-        // Check user-uploaded local override first
         if (this.localGlbOverrides.has(hero.id)) {
             return this.localGlbOverrides.get(hero.id);
         }
@@ -172,16 +196,15 @@ class AssetManagerClass {
         const teamCap = teamShort.charAt(0).toUpperCase() + teamShort.slice(1);
 
         const candidates = [
-            `${capName}${teamShort}.glb`,      // Christypassion.glb, Freyadream.glb
-            `${hero.slug}${teamShort}.glb`,     // christypassion.glb, freyadream.glb
-            `${capName}${teamCap}.glb`,       // ChristyPassion.glb, FreyaDream.glb
-            `${hero.slug}.glb`,                 // christy.glb, freya.glb
-            `${capName}.glb`                    // Christy.glb, Freya.glb
+            `${hero.slug}${teamShort}.glb`.toLowerCase(), // freyadream.glb, christypassion.glb
+            `${hero.slug}.glb`.toLowerCase(),              // freya.glb, christy.glb
+            `${capName}${teamShort}.glb`,                   // Freyadream.glb
+            `${capName}${teamCap}.glb`,                    // FreyaDream.glb
+            `${capName}.glb`                               // Freya.glb
         ];
 
         // 1. Check in GitHub tree map first
         for (const cand of candidates) {
-            // Check direct root
             const treeMatch = this.gitTreeMap.get(cand.toLowerCase()) || 
                               this.gitTreeMap.get(`models/${cand.toLowerCase()}`) ||
                               this.gitTreeMap.get(`model/${cand.toLowerCase()}`);
@@ -190,25 +213,52 @@ class AssetManagerClass {
             }
         }
 
-        // 2. Parallel HTTP HEAD probe
+        // 2. Parallel HTTP HEAD probe across local paths and raw GitHub
         for (const cand of candidates) {
-            const url = `${this.rootPath}/${cand}`;
-            try {
-                const resp = await fetch(url, { method: 'HEAD' });
-                if (resp.ok) return url;
-            } catch (_) {}
+            const probePaths = [
+                `${this.rootPath}/${cand}`,
+                `./models/${cand}`,
+                `./model/${cand}`,
+                `https://raw.githubusercontent.com/ashazeneca-cyber/skunvfucjsdheocjs/main/models/${cand}`
+            ];
+            for (const url of probePaths) {
+                try {
+                    const resp = await fetch(url, { method: 'HEAD' });
+                    if (resp.ok) {
+                        AssetRegistry.markUsed(cand);
+                        return url;
+                    }
+                } catch (_) {}
+            }
         }
 
-        // Fallback default
         return `${this.rootPath}/${candidates[0]}`;
     }
 
     /**
-     * Registers a local GLB model file directly from user device
-     * @param {string} heroId 
-     * @param {File} file 
-     * @returns {string} objectURL
+     * Loads a Hero 3D GLB model
+     * @param {Object|string} heroOrSlug 
+     * @returns {Promise<Object|null>}
      */
+    async loadHeroModel(heroOrSlug) {
+        let hero = typeof heroOrSlug === 'object' ? heroOrSlug : null;
+        if (!hero && typeof heroOrSlug === 'string') {
+            const { getHeroById } = await import('../config/rosterData.js');
+            hero = getHeroById(heroOrSlug);
+        }
+        if (!hero) return null;
+
+        const glbUrl = await this.resolveHeroGlbUrl(hero);
+        if (!glbUrl) return null;
+
+        try {
+            return await this.loadGLTF(glbUrl);
+        } catch (err) {
+            console.warn(`[AssetManager] Could not load GLB for ${hero.name} from ${glbUrl}:`, err);
+            return null;
+        }
+    }
+
     registerLocalGlb(heroId, file) {
         const objectUrl = URL.createObjectURL(file);
         this.localGlbOverrides.set(heroId.toLowerCase(), objectUrl);
@@ -216,13 +266,8 @@ class AssetManagerClass {
         return objectUrl;
     }
 
-    /**
-     * Loads GLB model with DRACO/Meshopt support
-     * @param {string} url 
-     * @param {Function} onProgress 
-     * @returns {Promise<THREE.Group>}
-     */
     loadGLTF(url, onProgress = null) {
+        AssetRegistry.markUsed(url);
         return new Promise((resolve, reject) => {
             if (!this.gltfLoader) {
                 this.init();
@@ -235,64 +280,61 @@ class AssetManagerClass {
                         onProgress(xhr.loaded / xhr.total);
                     }
                 },
-                (err) => reject(err)
+                (err) => {
+                    AssetRegistry.markFailed(url, 'GLTF Load Failed');
+                    reject(err);
+                }
             );
         });
     }
 
-    /**
-     * Loads a texture with automatic sRGB color space for color maps
-     * @param {string} url 
-     * @param {boolean} isColorMap 
-     * @returns {Promise<THREE.Texture>}
-     */
     loadTexture(url, isColorMap = true) {
+        AssetRegistry.markUsed(url);
         if (this.textureCache.has(url)) {
             return Promise.resolve(this.textureCache.get(url));
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.textureLoader.load(
                 url,
                 (tex) => {
-                    if (isColorMap) {
-                        tex.colorSpace = THREE.SRGBColorSpace;
-                    } else {
-                        tex.colorSpace = THREE.NoColorSpace;
-                    }
+                    tex.colorSpace = isColorMap ? THREE.SRGBColorSpace : THREE.NoColorSpace;
                     this.textureCache.set(url, tex);
                     resolve(tex);
                 },
                 undefined,
-                (err) => reject(err)
+                (err) => {
+                    AssetRegistry.markFailed(url, 'Texture 404 Fallback');
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 16;
+                    canvas.height = 16;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = isColorMap ? '#4a7c36' : '#808080';
+                    ctx.fillRect(0, 0, 16, 16);
+                    const fallbackTex = new THREE.CanvasTexture(canvas);
+                    fallbackTex.colorSpace = isColorMap ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+                    this.textureCache.set(url, fallbackTex);
+                    resolve(fallbackTex);
+                }
             );
         });
     }
 
-    /**
-     * Thorough GPU memory cleaner (Anti-VRAM Leak)
-     * @param {THREE.Object3D} root 
-     * @param {THREE.WebGLRenderer} renderer 
-     */
     disposeSceneTree(root, renderer = null) {
         if (!root) return;
 
         root.traverse((child) => {
             if (child.isMesh) {
-                if (child.geometry) {
-                    child.geometry.dispose();
-                }
-
+                if (child.geometry) child.geometry.dispose();
                 if (child.material) {
                     const materials = Array.isArray(child.material) ? child.material : [child.material];
                     for (const mat of materials) {
-                        // Dispose all texture properties
                         for (const key of Object.keys(mat)) {
                             const val = mat[key];
                             if (val && typeof val.dispose === 'function') {
                                 val.dispose();
                                 if (val.source && val.source.data && typeof val.source.data.close === 'function') {
-                                    val.source.data.close(); // Close ImageBitmap
+                                    val.source.data.close();
                                 }
                             }
                         }

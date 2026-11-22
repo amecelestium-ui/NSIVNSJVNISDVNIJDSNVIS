@@ -37,6 +37,14 @@ export class CharacterRigController {
         this.init();
     }
 
+    get position() {
+        return this.root ? this.root.position : null;
+    }
+
+    get rotation() {
+        return this.root ? this.root.rotation : null;
+    }
+
     init() {
         // 1. Deep clone skeleton hierarchy safely
         this.root = SkeletonUtils.clone(this.templateScene);

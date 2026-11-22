@@ -122,6 +122,11 @@ export class VfxManager {
         this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
     }
 
+    triggerShockwave(pos, color = 0x38bdf8, maxRadius = 5.0, duration = 0.4) {
+        if (!pos) return;
+        return this.shockwavePool.acquire(color, maxRadius, duration, pos);
+    }
+
     triggerHitstop(durationSec = 0.04) {
         this.hitstopTimer = durationSec;
     }
@@ -129,7 +134,7 @@ export class VfxManager {
     showFloatingDamage(worldPos, amount, type = 'physical') {
         const el = document.createElement('div');
         el.className = `floating-dmg-num dmg-${type}`;
-        el.textContent = type === 'crit' ? `💥 ${amount}!` : (type === 'heal' ? `+${amount}` : `${amount}`);
+        el.textContent = type === 'crit' ? `CRIT ${amount}!` : (type === 'heal' ? `+${amount}` : `${amount}`);
 
         this.damageContainer.appendChild(el);
 

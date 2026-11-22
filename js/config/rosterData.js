@@ -18,7 +18,7 @@ export const TEAMS = {
         colorRgb: [56, 189, 248],
         accentGlow: "rgba(56, 189, 248, 0.45)",
         crestIcon: "crest_team_dream.webp",
-        badge: "🌙"
+        badge: "crest_team_dream.webp"
     },
     team_love: {
         id: "team_love",
@@ -29,7 +29,7 @@ export const TEAMS = {
         colorRgb: [236, 72, 153],
         accentGlow: "rgba(236, 72, 153, 0.45)",
         crestIcon: "crest_team_love.webp",
-        badge: "💖"
+        badge: "crest_team_love.webp"
     },
     team_passion: {
         id: "team_passion",
@@ -40,7 +40,7 @@ export const TEAMS = {
         colorRgb: [245, 158, 11],
         accentGlow: "rgba(245, 158, 11, 0.45)",
         crestIcon: "crest_team_passion.webp",
-        badge: "🔥"
+        badge: "crest_team_passion.webp"
     }
 };
 
@@ -1687,6 +1687,21 @@ for (const h of HEROES) {
         s2: `skill_icons/${h.team}/${h.slug}_s2.webp`,
         ult: `skill_icons/${h.team}/${h.slug}_ult.webp`
     };
+
+    // Lane & Role Icons from ui_mega_pack/roles/
+    const laneLower = (h.lane || '').toLowerCase();
+    if (laneLower.includes('exp')) h.laneIcon = 'ui_mega_pack/roles/lane_exp.webp';
+    else if (laneLower.includes('gold')) h.laneIcon = 'ui_mega_pack/roles/lane_gold.webp';
+    else if (laneLower.includes('mid')) h.laneIcon = 'ui_mega_pack/roles/lane_mid.webp';
+    else if (laneLower.includes('jungle')) h.laneIcon = 'ui_mega_pack/roles/lane_jungle.webp';
+    else h.laneIcon = 'ui_mega_pack/roles/lane_roam.webp';
+
+    const roleLower = (h.role || '').toLowerCase();
+    if (roleLower.includes('mage')) h.roleIcon = 'ui_mega_pack/roles/role_mage.webp';
+    else if (roleLower.includes('marksman')) h.roleIcon = 'ui_mega_pack/roles/role_marksman.webp';
+    else if (roleLower.includes('assassin')) h.roleIcon = 'ui_mega_pack/roles/role_assassin.webp';
+    else if (roleLower.includes('support') || roleLower.includes('heal')) h.roleIcon = 'ui_mega_pack/roles/role_healer.webp';
+    else h.roleIcon = 'ui_mega_pack/roles/role_fighter.webp';
 
     // Ensure weapon object
     if (typeof h.weapon === 'string') {

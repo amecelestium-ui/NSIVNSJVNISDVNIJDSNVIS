@@ -4,7 +4,7 @@
  * 
  * Exact 100% (64/64) Spatial Placement Mapping for world_props_3d/*.glb:
  * - Terrarium Central Hub (22 models)
- * - South Reia Meadows (14 models)
+ * - South Sunlit Meadows (14 models)
  * - East Azure Harbor (5 models)
  * - West Sakura Forest (5 models)
  * - North Crystal Canyon (5 models)
@@ -13,14 +13,14 @@
  */
 
 export const FAST_TRAVEL_WAYPOINTS = [
-    { id: 'plaza', name: 'Central Plaza (Titik Temu)', x: 0, z: 0, icon: '🏛️' },
-    { id: 'cafe', name: 'Onyx Botanical Cafe', x: 78, z: -4, icon: '☕' },
-    { id: 'village', name: 'Desa Terarium & Kincir', x: -86, z: 0, icon: '🏘️' },
-    { id: 'aquifer', name: 'Crystal Aquifer Shrine', x: 0, z: -84, icon: '💧' },
-    { id: 'south_gate', name: 'Gerbang Selatan Terarium', x: 0, z: 158, icon: '⛩️' },
-    { id: 'windrise', name: 'Pohon Kuno Windrise', x: 0, z: 440, icon: '🌳' },
-    { id: 'east_harbor', name: 'Pelabuhan Azure Timur', x: 540, z: 0, icon: '⚓' },
-    { id: 'west_pagoda', name: 'Pagoda Sakura Barat', x: -760, z: 0, icon: '🌸' }
+    { id: 'plaza', name: 'Central Plaza (Titik Temu)', x: 0, z: 0, icon: 'ui_mega_pack/system/icon_home.webp' },
+    { id: 'cafe', name: 'Onyx Botanical Cafe', x: 78, z: -4, icon: 'ui_mega_pack/economy/chest_common.webp' },
+    { id: 'village', name: 'Desa Terarium & Kincir', x: -86, z: 0, icon: 'ui_mega_pack/system/icon_quest.webp' },
+    { id: 'aquifer', name: 'Crystal Aquifer Shrine', x: 0, z: -84, icon: 'ui_mega_pack/spells/spell_revitalize.webp' },
+    { id: 'south_gate', name: 'Gerbang Selatan Terarium', x: 0, z: 158, icon: 'ui_mega_pack/system/icon_teleport.webp' },
+    { id: 'windrise', name: 'Pohon Kuno Windrise', x: 0, z: 440, icon: 'ui_mega_pack/system/icon_teleport.webp' },
+    { id: 'east_harbor', name: 'Pelabuhan Azure Timur', x: 540, z: 0, icon: 'ui_mega_pack/system/icon_teleport.webp' },
+    { id: 'west_pagoda', name: 'Pagoda Sakura Barat', x: -760, z: 0, icon: 'ui_mega_pack/system/icon_teleport.webp' }
 ];
 
 export const WORLD_PROPS_LAYOUT = [

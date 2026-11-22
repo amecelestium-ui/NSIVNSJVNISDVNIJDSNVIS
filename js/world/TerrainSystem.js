@@ -236,7 +236,7 @@ export class TerrainSystem {
                     vec4 cliff = textureNoTile(uCliffTex, vWorldPos.xz * 0.06);
                     vec4 sand = textureNoTile(uSandTex, vWorldPos.xz * 0.09);
 
-                    // Reia sunny golden meadow tint
+                    // Sunlit golden meadow tint
                     vec3 sunTint = mix(vec3(0.74, 0.96, 0.66), vec3(1.12, 1.15, 0.72), smoothstep(1.0, 16.0, vWorldPos.y) * max(dot(vNormal, uSunDir), 0.2));
                     vec3 col = meadow.rgb * sunTint;
 

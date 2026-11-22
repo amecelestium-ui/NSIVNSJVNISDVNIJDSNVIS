@@ -13,7 +13,8 @@ export const ENGINE_INFO = {
 
 // Network & Backend
 export const NETWORK = {
-    BACKEND_URL: 'https://ashazeneca-cyber-onyxpure-server.hf.space',
+    BACKEND_URL: 'https://shinezzzz-newkhonikonixpure.hf.space',
+    WS_URL: 'wss://shinezzzz-newkhonikonixpure.hf.space',
     WS_PORT: 7860,
     HEARTBEAT_INTERVAL_MS: 25000,
     HEARTBEAT_TIMEOUT_MS: 75000,
@@ -24,6 +25,8 @@ export const NETWORK = {
     INPUT_PREDICTION_SMOOTHING: 0.22,
     SNAP_DISTANCE_METERS: 2.5
 };
+export const WS_URL = NETWORK.WS_URL;
+export const BACKEND_URL = NETWORK.BACKEND_URL;
 
 // Physics Simulation
 export const PHYSICS = {
