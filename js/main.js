@@ -211,7 +211,7 @@ class KernelEngine {
         const width = window.innerWidth;
         const height = window.innerHeight;
 
-        // Renderer: Direct High-Performance Rendering (No Bloom/Composer freeze)
+        // Renderer: Direct High-Performance 60 FPS Rendering (No Bloom/Composer freeze)
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             powerPreference: 'high-performance',
@@ -219,12 +219,11 @@ class KernelEngine {
             alpha: false
         });
         this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+        this.renderer.setPixelRatio(1); // 1.0 Pixel Ratio guaranteed 60 FPS & zero overheat
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.15;
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFShadowMap; // 1024 PCF Shadows
+        this.renderer.toneMappingExposure = 1.25;
+        this.renderer.shadowMap.enabled = false; // Lightweight Blob Shadows used instead of heavy shadowMap!
 
         // Scene
         this.scene = new THREE.Scene();
@@ -272,32 +271,23 @@ class KernelEngine {
             }
         }).catch(() => {});
 
-        // Try load 3D Terrarium Dome Environment GLB
-        AssetManager.loadGLTF(AssetManager.assetUrl('environments_glb/lobby_terrarium.glb')).then(gltf => {
-            if (gltf && this.lobbyPedestalGroup) {
-                gltf.scene.position.set(0, 0, 0);
-                this.lobbyPedestalGroup.add(gltf.scene);
-            }
-        }).catch(() => {});
-
         // Elegant Ivory White Marble Pedestal (Radius 2.35m, Height 0.38m)
         const baseGeo = new THREE.CylinderGeometry(2.35, 2.55, 0.38, 48);
         const baseMat = new THREE.MeshStandardMaterial({
-            color: 0xf1f5f9,
-            roughness: 0.32,
-            metalness: 0.12
+            color: 0xf8fafc,
+            roughness: 0.28,
+            metalness: 0.08
         });
         const baseMesh = new THREE.Mesh(baseGeo, baseMat);
         baseMesh.position.y = -0.19;
-        baseMesh.receiveShadow = true;
         this.lobbyPedestalGroup.add(baseMesh);
 
         // Gold Carved Ornamental Rim
         const rimGeo = new THREE.TorusGeometry(2.36, 0.035, 16, 64);
         const rimMat = new THREE.MeshStandardMaterial({
             color: 0xfbbf24,
-            roughness: 0.25,
-            metalness: 0.85
+            roughness: 0.22,
+            metalness: 0.88
         });
         const rimMesh = new THREE.Mesh(rimGeo, rimMat);
         rimMesh.rotation.x = Math.PI / 2;
@@ -333,22 +323,54 @@ class KernelEngine {
         this.lobbyPedestalGroup.add(this.lobbyFireflies);
 
         // 3-Point Studio Lighting for Hero Showcase (Zero Pitch-Black Hero!)
-        const ambLight = new THREE.AmbientLight(0xffffff, 1.35);
+        const ambLight = new THREE.AmbientLight(0xffffff, 2.2);
         this.lobbyPedestalGroup.add(ambLight);
 
-        const hemiLight = new THREE.HemisphereLight(0xdff4ff, 0x6b8e5a, 1.2);
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x88bbff, 1.8);
         this.lobbyPedestalGroup.add(hemiLight);
 
-        const keyLight = new THREE.DirectionalLight(0xfff6e5, 2.2);
-        keyLight.position.set(4, 7, 8);
-        keyLight.castShadow = true;
-        keyLight.shadow.mapSize.width = 1024;
-        keyLight.shadow.mapSize.height = 1024;
+        // Key Light shining directly onto front chest and face
+        const keyLight = new THREE.DirectionalLight(0xfff8ee, 3.2);
+        keyLight.position.set(1.5, 4.2, 5.5);
         this.lobbyPedestalGroup.add(keyLight);
 
-        const rimLight = new THREE.PointLight(0x38bdf8, 2.5, 12);
-        rimLight.position.set(0, 3.5, -4.5);
+        // Fill Light from left
+        const fillLight = new THREE.DirectionalLight(0xdbeafe, 1.8);
+        fillLight.position.set(-3.5, 2.5, 3.5);
+        this.lobbyPedestalGroup.add(fillLight);
+
+        // Rim Light from behind
+        const rimLight = new THREE.PointLight(0x38bdf8, 3.0, 15);
+        rimLight.position.set(0, 3.2, -3.8);
         this.lobbyPedestalGroup.add(rimLight);
+
+        // 360° Hero Drag Rotation in Lobby
+        if (!this.lobbyDragSetup) {
+            this.lobbyDragSetup = true;
+            let isLobbyDragging = false;
+            let lastLobbyX = 0;
+            this.canvas.addEventListener('pointerdown', (e) => {
+                if (this.currentState === GAME_STATES.LOBBY) {
+                    isLobbyDragging = true;
+                    lastLobbyX = e.clientX;
+                }
+            });
+            window.addEventListener('pointermove', (e) => {
+                if (isLobbyDragging && this.currentState === GAME_STATES.LOBBY) {
+                    const dx = e.clientX - lastLobbyX;
+                    lastLobbyX = e.clientX;
+                    if (this.playerController?.root) {
+                        this.playerController.root.rotation.y += dx * 0.012;
+                    }
+                }
+            });
+            window.addEventListener('pointerup', () => {
+                isLobbyDragging = false;
+            });
+            window.addEventListener('pointercancel', () => {
+                isLobbyDragging = false;
+            });
+        }
     }
 
     async loadLobbyHero(hero) {
@@ -357,6 +379,7 @@ class KernelEngine {
         // Remove old lobby hero if any
         if (this.playerController && this.playerController.root) {
             this.scene.remove(this.playerController.root);
+            AssetManager.disposeSceneTree(this.playerController.root);
             this.playerController = null;
             this.playerAnim = null;
         }
@@ -364,6 +387,19 @@ class KernelEngine {
         // Try load hero 3D GLB
         const gltf = await AssetManager.loadHeroModel(hero.slug || hero.id);
         if (gltf) {
+            // Brighten up all materials in hero GLB so it never appears pitch black!
+            gltf.scene.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    const mats = Array.isArray(child.material) ? child.material : [child.material];
+                    for (const m of mats) {
+                        m.roughness = Math.min(m.roughness ?? 0.6, 0.45);
+                        m.metalness = Math.min(m.metalness ?? 0.1, 0.12);
+                        m.envMapIntensity = 1.35;
+                        if (m.map) m.map.colorSpace = THREE.SRGBColorSpace;
+                    }
+                }
+            });
+
             this.playerController = new CharacterRigController({
                 hero,
                 templateScene: gltf.scene
@@ -390,7 +426,6 @@ class KernelEngine {
             });
             const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
             bodyMesh.position.y = 1.0;
-            bodyMesh.castShadow = true;
             placeholderGroup.add(bodyMesh);
 
             this.playerController = {
@@ -418,8 +453,72 @@ class KernelEngine {
     }
 
     // =========================================================================
-    // STATE TRANSITIONS
+    // STATE TRANSITIONS & WORLD CLEANUP
     // =========================================================================
+
+    clearActiveWorld() {
+        console.log('[Kernel] Clearing active world objects & GPU memory...');
+
+        // 1. Remove & Dispose Player Controller & Rig
+        if (this.playerController && this.playerController.root) {
+            this.scene.remove(this.playerController.root);
+            AssetManager.disposeSceneTree(this.playerController.root);
+        }
+        this.playerController = null;
+        this.playerAnim = null;
+        this.playerLoco = null;
+
+        // 2. Remove & Dispose Bots / Practice Targets
+        if (this.bots && this.bots.length > 0) {
+            for (const bot of this.bots) {
+                if (bot.root) {
+                    this.scene.remove(bot.root);
+                    AssetManager.disposeSceneTree(bot.root);
+                }
+            }
+            this.bots = [];
+        }
+
+        // 3. Clear World Systems
+        if (this.worldBuilder) {
+            this.worldBuilder.destroy();
+            this.worldBuilder = null;
+        }
+        if (this.terrain) {
+            this.terrain.destroy();
+            this.terrain = null;
+        }
+        if (this.flora) {
+            this.flora.destroy();
+            this.flora = null;
+        }
+        if (this.water) {
+            this.water.destroy();
+            this.water = null;
+        }
+        if (this.skyLighting) {
+            this.skyLighting.destroy();
+            this.skyLighting = null;
+        }
+        if (this.mobaObjectives) {
+            this.mobaObjectives.destroy();
+            this.mobaObjectives = null;
+        }
+
+        // 4. Hide Lobby Pedestal
+        if (this.lobbyPedestalGroup) {
+            this.lobbyPedestalGroup.visible = false;
+        }
+
+        // 5. Reset Targeting & Skill Executor
+        if (this.targeting) {
+            this.targeting.setPlayer(null);
+            this.targeting.setEntities([]);
+        }
+        if (this.skillExecutor) {
+            this.skillExecutor.activeProjectiles = [];
+        }
+    }
 
     transitionToLobby() {
         if (this.hasTransitionedFromLoading) return;
@@ -427,6 +526,8 @@ class KernelEngine {
         this.currentState = GAME_STATES.LOBBY;
 
         console.log('[Kernel] Entering 42-Hero Selection Lobby...');
+
+        this.clearActiveWorld();
 
         // Fade out loading screen smoothly
         if (this.loadingScreen) {
@@ -482,6 +583,8 @@ class KernelEngine {
         console.log(`[Kernel] Entering Mega Terrarium Sandbox with ${heroObj.name} at (${spawnX}, ${spawnZ})...`);
         this.currentState = GAME_STATES.SANDBOX;
 
+        this.clearActiveWorld();
+
         // Hide Lobby UI
         if (this.lobbyContainer) this.lobbyContainer.style.display = 'none';
         if (this.lobbyPedestalGroup) this.lobbyPedestalGroup.visible = false;
@@ -518,12 +621,90 @@ class KernelEngine {
         // Spawn Player Character
         await this.spawnPlayer(heroObj, spawnX, spawnZ);
 
-        // Setup Skill Executor
+        // Setup Skill Executor with live scene for 3D projectiles
         this.skillExecutor = new HeroSkillExecutor({
             vfxManager: this.vfx,
             audioManager: this.audio,
-            allEntities: []
+            allEntities: [],
+            scene: this.scene
         });
+
+        // Spawn 3 Practice Slimes & 1 Practice Golem Boss for immediate skill testing
+        const practiceTargets = [
+            { x: 10, z: 10, name: 'Meadow Slime (Dream)', color: 0x38bdf8, hp: 3500 },
+            { x: -10, z: 12, name: 'Meadow Slime (Love)', color: 0xec4899, hp: 3500 },
+            { x: 0, z: 16, name: 'Meadow Slime (Passion)', color: 0xf59e0b, hp: 3500 }
+        ];
+
+        this.bots = [];
+        practiceTargets.forEach((pt, idx) => {
+            const slimeGroup = new THREE.Group();
+            const slimeGeo = new THREE.SphereGeometry(0.75, 16, 12);
+            slimeGeo.scale(1, 0.72, 1);
+            const slimeMat = new THREE.MeshStandardMaterial({
+                color: pt.color,
+                roughness: 0.35,
+                metalness: 0.1,
+                transparent: true,
+                opacity: 0.90
+            });
+            const slimeMesh = new THREE.Mesh(slimeGeo, slimeMat);
+            slimeMesh.position.y = 0.52;
+            slimeGroup.add(slimeMesh);
+
+            const ty = getTerrainHeight(pt.x, pt.z, 'sandbox');
+            slimeGroup.position.set(pt.x, ty, pt.z);
+            this.scene.add(slimeGroup);
+
+            this.bots.push({
+                id: `practice_slime_${idx}`,
+                name: pt.name,
+                root: slimeGroup,
+                position: slimeGroup.position,
+                team: 'team_passion', // Enemy so player can hit & combo
+                hp: pt.hp,
+                maxHp: pt.hp,
+                pdef: 20,
+                mdef: 15,
+                isMinion: true
+            });
+        });
+
+        // 1 Practice Golem Boss
+        const golemGroup = new THREE.Group();
+        const golemGeo = new THREE.BoxGeometry(2.4, 3.4, 1.8);
+        const golemMat = new THREE.MeshStandardMaterial({
+            color: 0x64748b,
+            roughness: 0.55,
+            metalness: 0.25
+        });
+        const golemMesh = new THREE.Mesh(golemGeo, golemMat);
+        golemMesh.position.y = 1.7;
+        golemGroup.add(golemMesh);
+
+        const gy = getTerrainHeight(0, 45, 'sandbox');
+        golemGroup.position.set(0, gy, 45);
+        this.scene.add(golemGroup);
+
+        this.bots.push({
+            id: 'practice_golem',
+            name: 'Ancient Crystal Golem',
+            root: golemGroup,
+            position: golemGroup.position,
+            team: 'team_passion',
+            hp: 15000,
+            maxHp: 15000,
+            pdef: 40,
+            mdef: 30,
+            isBoss: true
+        });
+
+        if (this.targeting) {
+            this.targeting.setEntities(this.bots);
+        }
+        if (this.skillExecutor) {
+            this.skillExecutor.setEntities(this.bots);
+        }
 
         // Initialize Realtime Multiplayer Sync
         if (this.syncEngine) {
@@ -573,8 +754,11 @@ class KernelEngine {
 
     async transitionToArena(hero, arenaId = 'arena_colosseum', spellId = 'spell_flicker') {
         const heroObj = typeof hero === 'object' ? hero : (getHeroById(hero) || this.selectedHero);
+        this.selectedArenaId = arenaId;
         console.log(`[Kernel] Entering 5v5 MOBA Arena: ${arenaId} with ${heroObj.name}...`);
         this.currentState = GAME_STATES.ARENA;
+
+        this.clearActiveWorld();
 
         // Hide Lobby UI
         if (this.lobbyContainer) this.lobbyContainer.style.display = 'none';
@@ -620,12 +804,14 @@ class KernelEngine {
                 alert(winningTeam === 'team_dream' ? 'VICTORY! Nexus Lawan Hancur!' : 'DEFEAT! Nexus Kita Hancur!');
             }
         });
+        await this.mobaObjectives.init();
 
-        // Setup Skill Executor with all combat targets
+        // Setup Skill Executor with live scene for 3D projectiles
         this.skillExecutor = new HeroSkillExecutor({
             vfxManager: this.vfx,
             audioManager: this.audio,
-            allEntities: []
+            allEntities: [],
+            scene: this.scene
         });
 
         // Spawn 4 Allied Bots + 5 Enemy Bots
@@ -811,7 +997,7 @@ class KernelEngine {
                 this.playerController.root.rotation.y += 0.45 * dt;
             }
             if (this.playerAnim) {
-                this.playerAnim.update(dt);
+                this.playerAnim.update(dt, 0, true);
             }
             if (this.lobbyFireflies) {
                 this.lobbyFireflies.rotation.y += 0.06 * dt;
@@ -825,7 +1011,39 @@ class KernelEngine {
                 this.playerLoco.update(dt);
             }
             if (this.playerAnim) {
-                this.playerAnim.update(dt);
+                const horizSpeed = this.playerLoco?.velocity ? Math.hypot(this.playerLoco.velocity.x, this.playerLoco.velocity.z) : 0;
+                const speedRatio = horizSpeed > 0.15 ? (this.playerLoco.isSprinting ? 1.0 : 0.65) : 0.0;
+                const isGrounded = this.playerLoco ? this.playerLoco.isGrounded : true;
+                this.playerAnim.update(dt, speedRatio, isGrounded);
+            }
+
+            // Update Skill Executor (Projectiles, Traps, Cooldowns)
+            if (this.skillExecutor) {
+                this.skillExecutor.update(dt);
+            }
+
+            // Arena Boundary Clamping (Anti-Void Fall)
+            if (this.currentState === GAME_STATES.ARENA && this.playerLoco) {
+                const px = this.playerLoco.position.x;
+                const pz = this.playerLoco.position.z;
+                if (this.selectedArenaId === 'arena_colosseum') {
+                    const dist = Math.hypot(px, pz);
+                    if (dist > 85) {
+                        const ratio = 84.8 / dist;
+                        this.playerLoco.position.x = px * ratio;
+                        this.playerLoco.position.z = pz * ratio;
+                    }
+                } else if (this.selectedArenaId === 'arena_ocean_bridge') {
+                    this.playerLoco.position.x = Math.max(-95, Math.min(95, px));
+                    this.playerLoco.position.z = Math.max(-16, Math.min(16, pz));
+                } else if (this.selectedArenaId === 'arena_sky_sakura') {
+                    const dist = Math.hypot(px, pz);
+                    if (dist > 80) {
+                        const ratio = 79.8 / dist;
+                        this.playerLoco.position.x = px * ratio;
+                        this.playerLoco.position.z = pz * ratio;
+                    }
+                }
             }
 
             // Update Audio 3D Listener to player position

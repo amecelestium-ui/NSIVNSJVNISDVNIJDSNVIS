@@ -306,12 +306,38 @@ class AssetManagerClass {
                 (err) => {
                     AssetRegistry.markFailed(url, 'Texture 404 Fallback');
                     const canvas = document.createElement('canvas');
-                    canvas.width = 16;
-                    canvas.height = 16;
+                    canvas.width = 128;
+                    canvas.height = 128;
                     const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = isColorMap ? '#4a7c36' : '#808080';
-                    ctx.fillRect(0, 0, 16, 16);
+                    if (isColorMap) {
+                        // Rich stylized Anime Grass palette
+                        const grad = ctx.createLinearGradient(0, 0, 128, 128);
+                        grad.addColorStop(0, '#3a6828');
+                        grad.addColorStop(0.5, '#4a7d34');
+                        grad.addColorStop(1, '#5b9340');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0, 0, 128, 128);
+
+                        // Subtle stylized grass blade noise
+                        ctx.fillStyle = 'rgba(110, 190, 75, 0.35)';
+                        for (let i = 0; i < 180; i++) {
+                            const rx = Math.random() * 128;
+                            const ry = Math.random() * 128;
+                            ctx.fillRect(rx, ry, 2, 4);
+                        }
+                        ctx.fillStyle = 'rgba(35, 65, 25, 0.25)';
+                        for (let i = 0; i < 120; i++) {
+                            const rx = Math.random() * 128;
+                            const ry = Math.random() * 128;
+                            ctx.fillRect(rx, ry, 2, 3);
+                        }
+                    } else {
+                        ctx.fillStyle = '#808080';
+                        ctx.fillRect(0, 0, 128, 128);
+                    }
                     const fallbackTex = new THREE.CanvasTexture(canvas);
+                    fallbackTex.wrapS = THREE.RepeatWrapping;
+                    fallbackTex.wrapT = THREE.RepeatWrapping;
                     fallbackTex.colorSpace = isColorMap ? THREE.SRGBColorSpace : THREE.NoColorSpace;
                     this.textureCache.set(url, fallbackTex);
                     resolve(fallbackTex);

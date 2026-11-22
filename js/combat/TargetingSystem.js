@@ -47,6 +47,52 @@ export class TargetingSystem {
         this.isCancelHovered = false;
 
         this.initDecals();
+        this.setupCameraControls();
+    }
+
+    setupCameraControls() {
+        let isDragging = false;
+        let lastX = 0, lastY = 0;
+
+        window.addEventListener('pointerdown', (e) => {
+            // Check if clicking interactive UI element
+            if (e.target && e.target.closest('button, .analog-zone, .skill-btn, .skill-btn-circle, .btn-action-main, .hud-interactive, .modal, .curr-pill, .btn-filter-icon, .team-tab-btn, .hero-card-3col, .arena-card-thumb, .sandbox-card-thumb, .minimap-frame-box, .fast-travel-panel')) {
+                return;
+            }
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            lastX = e.clientX;
+            lastY = e.clientY;
+
+            // 360 Full Horizontal Rotation
+            this.camYaw -= dx * 0.0055;
+
+            // Vertical Elevation Clamp: 10 deg (0.17 rad) to 65 deg (1.13 rad)
+            const minPitch = 0.17;
+            const maxPitch = 1.13;
+            this.camPitch = Math.max(minPitch, Math.min(maxPitch, this.camPitch + dy * 0.004));
+        });
+
+        window.addEventListener('pointerup', () => {
+            isDragging = false;
+        });
+
+        window.addEventListener('pointercancel', () => {
+            isDragging = false;
+        });
+
+        // Mouse Wheel Zoom: 3.5m to 18.0m
+        window.addEventListener('wheel', (e) => {
+            const zoomDelta = e.deltaY * 0.01;
+            this.camDist = Math.max(3.5, Math.min(18.0, this.camDist + zoomDelta));
+        }, { passive: true });
     }
 
     setPlayer(player) {

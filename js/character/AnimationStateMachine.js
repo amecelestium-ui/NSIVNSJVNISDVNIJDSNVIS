@@ -2,9 +2,11 @@
  * ONYXPURE — JKT48 3D MOBA × OPEN-WORLD ARENA
  * js/character/AnimationStateMachine.js
  * 
- * 13-State Animation Machine with Smooth Cross-Fading,
- * LateUpdate Bone Overrides (Spine Aiming, Slope Tilt, Hit Recoil),
- * and Mathematical Procedural Skeletal Animation Fallback.
+ * Master Skeletal Animation Controller:
+ * - Hybrid: Plays GLTF AnimationMixer clips if present
+ * - Full Procedural Skeletal Animator (Anti A-Pose, Real Striding Steps, Arm Swings, Combat Slashes)
+ * - Rest Pose Relative Quaternion Mathematics: bone.quaternion.copy(restQuat).multiply(deltaQuat)
+ * - LateUpdate Spine Aiming & Recoil
  */
 
 import * as THREE from 'three';
@@ -19,12 +21,13 @@ export class AnimationStateMachine {
     constructor({ modelRoot, bones, clips = [] }) {
         this.modelRoot = modelRoot;
         this.bones = bones;
-        this.clips = clips;
+        this.clips = clips || [];
 
         this.mixer = new THREE.AnimationMixer(modelRoot);
         this.actions = {};
         this.currentState = 'IDLE';
         this.currentAction = null;
+        this.hasValidClips = false;
 
         // Procedural Animation State
         this.proceduralPhase = 0;
@@ -44,15 +47,20 @@ export class AnimationStateMachine {
     }
 
     initClips() {
-        for (const clip of this.clips) {
-            const name = clip.name.toUpperCase();
-            this.actions[name] = this.mixer.clipAction(clip);
-        }
+        if (this.clips && this.clips.length > 0) {
+            for (const clip of this.clips) {
+                const name = clip.name.toUpperCase();
+                this.actions[name] = this.mixer.clipAction(clip);
+                this.hasValidClips = true;
+            }
 
-        // Set initial action if available
-        if (this.actions['IDLE']) {
-            this.currentAction = this.actions['IDLE'];
-            this.currentAction.play();
+            if (this.actions['IDLE']) {
+                this.currentAction = this.actions['IDLE'];
+                this.currentAction.play();
+            } else if (this.clips[0]) {
+                this.currentAction = this.mixer.clipAction(this.clips[0]);
+                this.currentAction.play();
+            }
         }
     }
 
@@ -77,10 +85,15 @@ export class AnimationStateMachine {
         if (newState.startsWith('BASIC_') || newState.startsWith('SKILL_') || newState === 'ULTIMATE') {
             this.isAttacking = true;
             this.attackPhase = 0;
-            this.attackDuration = newState === 'ULTIMATE' ? 0.95 : (newState.startsWith('SKILL_') ? 0.55 : 0.42);
+            this.attackDuration = newState === 'ULTIMATE' ? 0.85 : (newState.startsWith('SKILL_') ? 0.50 : 0.38);
         } else {
             this.isAttacking = false;
         }
+    }
+
+    triggerAttack(combo = 1) {
+        this.attackComboIndex = combo;
+        this.setState(`BASIC_${combo}`);
     }
 
     triggerRecoil(impulse = -0.22) {
@@ -88,7 +101,6 @@ export class AnimationStateMachine {
     }
 
     setTargetAimYaw(deltaYaw) {
-        // Clamp to +-42 degrees
         const maxRad = 42 * (Math.PI / 180);
         this.targetAimYaw = Math.max(-maxRad, Math.min(maxRad, deltaYaw));
     }
@@ -96,43 +108,54 @@ export class AnimationStateMachine {
     update(dt, moveSpeedRatio = 0, isGrounded = true, terrainNormal = null) {
         this.proceduralPhase += dt;
 
-        // 1. Advance clip mixer
-        this.mixer.update(dt);
+        // 1. Advance clip mixer if model has valid animation clips
+        if (this.hasValidClips) {
+            this.mixer.update(dt);
+        }
 
-        // 2. Procedural Animation Layer (Runs when clips are absent or for attacks)
+        // 2. Procedural Skeletal Animation Layer (Always active to ensure anti-A-pose and natural body dynamics)
         this.updateProceduralSkeletal(dt, moveSpeedRatio, isGrounded);
 
-        // 3. LateUpdate Bone Overrides (Executed after mixer.update to eliminate flicker)
+        // 3. LateUpdate Bone Overrides
         this.applyLateUpdateOverrides(dt, terrainNormal);
+    }
+
+    applyBoneDelta(bone, rx, ry, rz) {
+        if (!bone) return;
+        const baseQuat = bone.userData.restQuat || bone.quaternion;
+        const qDelta = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz, 'XYZ'));
+        bone.quaternion.copy(baseQuat).multiply(qDelta);
     }
 
     updateProceduralSkeletal(dt, moveSpeedRatio, isGrounded) {
         const t = this.proceduralPhase;
-        const bones = this.bones;
-        if (!bones.chest) return;
+        const b = this.bones;
 
+        // Attack Animation
         if (this.isAttacking) {
             this.attackPhase += dt;
             const progress = this.attackPhase / this.attackDuration;
 
             if (progress <= 1.0) {
-                // Foreswing -> Active Strike -> Backswing
                 if (progress < 0.28) {
-                    // Foreswing: shoulder draw back
-                    const fore = progress / 0.28;
-                    if (bones.chest) bones.chest.rotation.y = -0.25 * fore;
-                    if (bones.upperArmR) bones.upperArmR.rotation.x = -0.45 * fore;
-                } else if (progress < 0.62) {
-                    // Strike: forward slash
-                    const strike = (progress - 0.28) / 0.34;
-                    if (bones.chest) bones.chest.rotation.y = -0.25 + 0.65 * strike;
-                    if (bones.upperArmR) bones.upperArmR.rotation.x = -0.45 + 0.95 * strike;
-                    if (bones.handR) bones.handR.rotation.z = 0.45 * strike;
+                    // Phase 1: Foreswing (Wind-up)
+                    const f = progress / 0.28;
+                    this.applyBoneDelta(b.chest, 0, -0.35 * f, 0);
+                    this.applyBoneDelta(b.upperArmR, -0.65 * f, 0.25 * f, 0.45 * f);
+                    this.applyBoneDelta(b.forearmR, 0.55 * f, 0, 0);
+                } else if (progress < 0.65) {
+                    // Phase 2: Strike Slash
+                    const s = (progress - 0.28) / 0.37;
+                    this.applyBoneDelta(b.chest, 0.12 * s, -0.35 + 0.75 * s, 0);
+                    this.applyBoneDelta(b.upperArmR, -0.65 + 1.25 * s, -0.35 * s, 0.25 * (1 - s));
+                    this.applyBoneDelta(b.forearmR, 0.55 - 0.35 * s, 0, 0);
+                    this.applyBoneDelta(b.handR, 0, 0, 0.45 * s);
                 } else {
-                    // Backswing: return
-                    const back = (progress - 0.62) / 0.38;
-                    if (bones.chest) bones.chest.rotation.y = 0.40 * (1 - back);
-                    if (bones.upperArmR) bones.upperArmR.rotation.x = 0.50 * (1 - back);
+                    // Phase 3: Follow-through / Recover
+                    const r = (progress - 0.65) / 0.35;
+                    this.applyBoneDelta(b.chest, 0.12 * (1 - r), 0.40 * (1 - r), 0);
+                    this.applyBoneDelta(b.upperArmR, 0.60 * (1 - r), -0.35 * (1 - r), 0.25 * r);
+                    this.applyBoneDelta(b.forearmR, 0.20 * (1 - r), 0, 0);
                 }
             } else {
                 this.isAttacking = false;
@@ -140,56 +163,74 @@ export class AnimationStateMachine {
             return;
         }
 
+        // Airborne Jump
         if (!isGrounded) {
-            // Jump pose: legs tucked slightly
-            if (bones.thighR) bones.thighR.rotation.x = 0.45;
-            if (bones.thighL) bones.thighL.rotation.x = 0.35;
-            if (bones.calfR) bones.calfR.rotation.x = -0.65;
-            if (bones.calfL) bones.calfL.rotation.x = -0.55;
-            if (bones.upperArmR) bones.upperArmR.rotation.z = 0.45;
-            if (bones.upperArmL) bones.upperArmL.rotation.z = -0.45;
+            this.applyBoneDelta(b.thighR, 0.55, 0, 0);
+            this.applyBoneDelta(b.thighL, 0.45, 0, 0);
+            this.applyBoneDelta(b.calfR, -0.75, 0, 0);
+            this.applyBoneDelta(b.calfL, -0.65, 0, 0);
+            this.applyBoneDelta(b.upperArmR, 0, 0, 0.65);
+            this.applyBoneDelta(b.upperArmL, 0, 0, -0.65);
             return;
         }
 
-        if (moveSpeedRatio > 0.1) {
-            // Locomotion Walk / Run / Sprint
-            const freq = 6.8 * moveSpeedRatio;
-            const legAmp = 0.68 * Math.min(1.0, moveSpeedRatio);
-
+        // Locomotion: Walk / Run / Sprint
+        if (moveSpeedRatio > 0.05) {
+            const speed = Math.max(0.4, Math.min(1.0, moveSpeedRatio));
+            const freq = 7.2 * speed;
+            const legAmp = 0.72 * speed;
             const legPhase = t * freq;
-            if (bones.thighR) bones.thighR.rotation.x = Math.sin(legPhase) * legAmp;
-            if (bones.thighL) bones.thighL.rotation.x = -Math.sin(legPhase) * legAmp;
 
-            if (bones.calfR) bones.calfR.rotation.x = Math.max(0, -Math.sin(legPhase + 0.4)) * 0.92;
-            if (bones.calfL) bones.calfL.rotation.x = Math.max(0, Math.sin(legPhase + 0.4)) * 0.92;
+            // Leg striding counter-phase
+            this.applyBoneDelta(b.thighR, Math.sin(legPhase) * legAmp, 0, 0);
+            this.applyBoneDelta(b.thighL, -Math.sin(legPhase) * legAmp, 0, 0);
 
-            // Opposing arm swing
-            const armAmp = 0.55 * Math.min(1.0, moveSpeedRatio);
-            if (bones.upperArmR) bones.upperArmR.rotation.x = -Math.sin(legPhase) * armAmp;
-            if (bones.upperArmL) bones.upperArmL.rotation.x = Math.sin(legPhase) * armAmp;
+            // Knees bend backwards when foot lifts off ground
+            this.applyBoneDelta(b.calfR, Math.max(0, -Math.sin(legPhase + 0.3)) * 0.95, 0, 0);
+            this.applyBoneDelta(b.calfL, Math.max(0, Math.sin(legPhase + 0.3)) * 0.95, 0, 0);
 
-            // Hip vertical bounce
-            if (bones.hips) bones.hips.position.y = Math.abs(Math.sin(legPhase * 2)) * 0.06;
+            // Counter arm swinging (opposite to legs)
+            const armAmp = 0.58 * speed;
+            this.applyBoneDelta(b.upperArmR, -Math.sin(legPhase) * armAmp, 0, 0.25);
+            this.applyBoneDelta(b.upperArmL, Math.sin(legPhase) * armAmp, 0, -0.25);
+            this.applyBoneDelta(b.forearmR, 0.35, 0, 0);
+            this.applyBoneDelta(b.forearmL, 0.35, 0, 0);
+
+            // Forward spine lean & gentle hip bounce
+            this.applyBoneDelta(b.chest, 0.12 * speed, 0, 0);
+            if (b.hips && b.hips.userData.restPos) {
+                b.hips.position.y = b.hips.userData.restPos.y + Math.abs(Math.sin(legPhase * 2)) * 0.04;
+            }
         } else {
-            // Idle breathing
+            // Natural Relaxed Idle (Anti A-Pose: Arms down at sides, subtle breathing)
             const breath = Math.sin(t * 2.2) * 0.035;
-            if (bones.chest) bones.chest.rotation.x = breath;
-            if (bones.head) bones.head.rotation.x = -breath * 0.5;
-            if (bones.upperArmR) bones.upperArmR.rotation.z = 0.15 + breath * 0.5;
-            if (bones.upperArmL) bones.upperArmL.rotation.z = -0.15 - breath * 0.5;
+            this.applyBoneDelta(b.chest, breath, 0, 0);
+            this.applyBoneDelta(b.head, -breath * 0.6, 0, 0);
+
+            // Lower upper arms to sides from T/A-pose
+            this.applyBoneDelta(b.upperArmR, 0.08, 0, 0.45 + breath * 0.3);
+            this.applyBoneDelta(b.upperArmL, 0.08, 0, -0.45 - breath * 0.3);
+            this.applyBoneDelta(b.forearmR, 0.25, 0, 0);
+            this.applyBoneDelta(b.forearmL, 0.25, 0, 0);
+
+            // Reset legs to neutral rest pose
+            this.applyBoneDelta(b.thighR, 0, 0, 0);
+            this.applyBoneDelta(b.thighL, 0, 0, 0);
+            this.applyBoneDelta(b.calfR, 0, 0, 0);
+            this.applyBoneDelta(b.calfL, 0, 0, 0);
+            if (b.hips && b.hips.userData.restPos) {
+                b.hips.position.y = b.hips.userData.restPos.y;
+            }
         }
     }
 
     applyLateUpdateOverrides(dt, terrainNormal) {
-        const bones = this.bones;
+        const b = this.bones;
 
-        // 1. Spine Target Aiming (Rotate upper body towards locked target)
-        if (Math.abs(this.targetAimYaw) > 0.01) {
-            const spineRot = this.targetAimYaw * 0.45;
-            const chestRot = this.targetAimYaw * 0.55;
-
-            if (bones.spine) bones.spine.rotation.y += spineRot;
-            if (bones.chest) bones.chest.rotation.y += chestRot;
+        // 1. Spine Target Aiming
+        if (Math.abs(this.targetAimYaw) > 0.01 && b.chest) {
+            const qAim = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.targetAimYaw * 0.5);
+            b.chest.quaternion.multiply(qAim);
         }
 
         // 2. Damped Spring Hit Recoil
@@ -199,14 +240,9 @@ export class AnimationStateMachine {
         this.recoilVelocity += springForce * dt;
         this.recoilPitch += this.recoilVelocity * dt;
 
-        if (bones.chest && Math.abs(this.recoilPitch) > 0.001) {
-            bones.chest.rotation.x += this.recoilPitch;
-        }
-
-        // 3. Terrain Slope Tilt Compensation
-        if (terrainNormal && bones.hips) {
-            const slopePitch = Math.asin(Math.max(-0.25, Math.min(0.25, -terrainNormal.z)));
-            bones.hips.rotation.x += slopePitch * 0.65;
+        if (b.chest && Math.abs(this.recoilPitch) > 0.001) {
+            const qRecoil = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.recoilPitch);
+            b.chest.quaternion.multiply(qRecoil);
         }
     }
 }

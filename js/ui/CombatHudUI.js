@@ -519,6 +519,31 @@ export class CombatHudUI {
             });
         }
 
+        // Global Combat Keyboard Shortcuts (J, Q, W, R, E, B, G)
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            // Ignore if typing in text input or modals
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+            const key = e.key.toLowerCase();
+            if (key === 'j') {
+                this.onBasicAttack();
+            } else if (key === 'q' || key === '1') {
+                this.onSkillCast('q');
+            } else if (key === 'w' || key === '2') {
+                this.onSkillCast('w');
+            } else if (key === 'r' || key === '3') {
+                this.onSkillCast('r');
+            } else if (key === 'e' || key === 'f') {
+                this.onSkillCast('spell');
+            } else if (key === 'b') {
+                AudioManager.play('portal_warp');
+                this.onFastTravel('plaza');
+            } else if (key === 'g') {
+                AudioManager.play('heal_chime');
+                this.triggerStatusIcon('heal', 5000);
+            }
+        });
+
         this.initVirtualJoystick();
     }
 

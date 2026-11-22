@@ -22,15 +22,18 @@ export class FloraSystem {
     }
 
     async init() {
-        // High-Performance Instance Budget (Anti-Freeze, Smooth 60 FPS)
-        let grassCount = 2500;
-        let flowerCount = 800;
+        // Ultra High-Performance Instance Budget (Rock-solid 60 FPS, Radius 45m)
+        let grassCount = 900;
+        let flowerCount = 300;
+        let scatterRadius = 45;
         if (this.quality === 'low') {
-            grassCount = 800;
-            flowerCount = 250;
+            grassCount = 400;
+            flowerCount = 150;
+            scatterRadius = 35;
         } else if (this.quality === 'high') {
-            grassCount = 5000;
-            flowerCount = 1600;
+            grassCount = 1600;
+            flowerCount = 500;
+            scatterRadius = 55;
         }
 
         // Crossed quad geometry

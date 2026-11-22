@@ -119,8 +119,8 @@ export class TerrainSystem {
     }
 
     async buildSandboxTerrain() {
-        const size = 1200;
-        const segments = 128;
+        const size = 900;
+        const segments = 72;
 
         const geo = new THREE.PlaneGeometry(size, size, segments, segments);
         geo.rotateX(-Math.PI / 2);
@@ -135,28 +135,23 @@ export class TerrainSystem {
             const y = getTerrainHeight(x, z, 'sandbox');
             posAttr.setY(i, y);
 
-            // Calculate vertex colors based on height, slopes, and roads
+            // Smooth natural gradient (No abrupt harsh blocky borders)
             const distPlaza = Math.hypot(x, z);
-            const isNearOrigin = distPlaza < 30;
-            const isRoadToCafe = Math.abs(z - (-4)) < 4.5 && x > 0 && x < 78;
-            const isRoadToVillage = Math.abs(z) < 4.5 && x < 0 && x > -86;
-            const isRoadToAquifer = Math.abs(x) < 4.5 && z < 0 && z > -84;
-            const isRoadToSouth = Math.abs(x) < 5.0 && z > 0 && z < 158;
-            const isRoad = isNearOrigin || isRoadToCafe || isRoadToVillage || isRoadToAquifer || isRoadToSouth;
+            const isRoad = distPlaza < 28 ||
+                           (Math.abs(z - (-4)) < 4.0 && x > 0 && x < 78) ||
+                           (Math.abs(z) < 4.0 && x < 0 && x > -86) ||
+                           (Math.abs(x) < 4.0 && z < 0 && z > -84);
 
-            let r = 0.42, g = 0.74, b = 0.32; // Fresh valley green
+            let r = 0.44, g = 0.72, b = 0.34; // Vibrant stylized green
             if (isRoad) {
-                // Warm beige road path
-                r = 0.76; g = 0.68; b = 0.52;
-            } else if (x > 450) {
-                // Eastern ocean beach sand
-                r = 0.88; g = 0.82; b = 0.58;
-            } else if (y > 6.0) {
-                // Sunlit golden hill peaks
-                r = 0.72; g = 0.86; b = 0.36;
-            } else if (y < 0.6) {
-                // Aquifer water edge lush green
-                r = 0.32; g = 0.68; b = 0.35;
+                // Cobble road tint
+                r = 0.74; g = 0.68; b = 0.54;
+            } else if (y > 7.0) {
+                // Hill elevation soft highlight
+                r = 0.52; g = 0.78; b = 0.36;
+            } else if (y < 0.5) {
+                // Water shore lush
+                r = 0.35; g = 0.65; b = 0.32;
             }
 
             colors[i * 3 + 0] = r;
@@ -174,7 +169,7 @@ export class TerrainSystem {
             if (meadowTex) {
                 meadowTex.wrapS = THREE.RepeatWrapping;
                 meadowTex.wrapT = THREE.RepeatWrapping;
-                meadowTex.repeat.set(48, 48);
+                meadowTex.repeat.set(32, 32);
                 meadowTex.colorSpace = THREE.SRGBColorSpace;
             }
         } catch (_) {}

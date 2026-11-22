@@ -34,8 +34,8 @@ export const WORLD_PROPS_LAYOUT = [
     },
     {
         model: 'hero_marble_pedestal',
-        x: 0, z: 0, scale: 1.15, rotY: 0,
-        collisionRadius: 4.2, zone: 'terrarium'
+        x: 35, z: 35, scale: 1.0, rotY: 0,
+        collisionRadius: 3.2, zone: 'terrarium'
     },
     {
         model: 'healing_sanctuary_fountain',

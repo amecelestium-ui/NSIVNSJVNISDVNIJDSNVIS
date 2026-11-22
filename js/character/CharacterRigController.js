@@ -2,11 +2,12 @@
  * ONYXPURE — JKT48 3D MOBA × OPEN-WORLD ARENA
  * js/character/CharacterRigController.js
  * 
- * Master Character Rigging & Weapon Attachment:
- * - SkeletonUtils.clone() with Unshared Bone Transforms
- * - Auto-Scale to 1.85m & Hip Grounding Compensation (Anti-Float / Anti-Sink)
- * - 16-Bone Regex Multi-Standard Mapper (Mixamo, Meshy, Blender, VRM)
- * - Calibrated 3D Weapon Sockets for 6 Active Heroes (Twin Blades, Orbiting Chess, Bow, Scepter, Baton)
+ * 2-Layer Robust Bone Rig Mapping & Real-World Proportional Weapon Attachment:
+ * - Layer 1: Comprehensive Regex (Mixamo, Meshy, Blender, Bip01, standard names)
+ * - Layer 2: Spatial Geometry Fallback Classifier based on Rest World Positions
+ * - Rest Pose Quaternion preservation (bone.userData.restQuat) for Procedural Animation
+ * - Hand-Locked Weapon Binding: Grip handle seated directly in palm (0, 0, 0)
+ * - Lightweight Dark Circular Blob Shadow (0% GPU shadow overhead)
  */
 
 import * as THREE from 'three';
@@ -16,7 +17,7 @@ import { AssetManager } from '../core/AssetManager.js';
 export class CharacterRigController {
     /**
      * @param {Object} options
-     * @param {Object} options.hero Hero definition data
+     * @param {Object} options.hero Hero configuration data
      * @param {THREE.Group} options.templateScene GLTF scene template
      */
     constructor({ hero, templateScene }) {
@@ -27,7 +28,7 @@ export class CharacterRigController {
         this.bones = {};
         this.weaponMeshR = null;
         this.weaponMeshL = null;
-        this.orbitWeaponPivot = null;
+        this.blobShadow = null;
 
         this.bladePoints = {
             right: { base: new THREE.Vector3(), tip: new THREE.Vector3() },
@@ -49,25 +50,27 @@ export class CharacterRigController {
         // 1. Deep clone skeleton hierarchy safely
         this.root = SkeletonUtils.clone(this.templateScene);
 
-        // 2. Normalize scale to 1.85m & compensate hip pivot
+        // 2. Normalize scale to 1.85m & ground root
         this.normalizeSkeleton();
 
-        // 3. Map 16 bones across standard naming conventions
+        // 3. 2-Layer Robust Bone Mapping
         this.mapBones();
 
         // 4. Attach hero-specific 3D weapon
         this.attachWeapon();
+
+        // 5. Attach Lightweight Dark Circular Blob Shadow under feet
+        this.createBlobShadow();
     }
 
     normalizeSkeleton() {
-        // Ensure frustum culling disabled on SkinnedMeshes so character never vanishes
         this.root.traverse((child) => {
             if (child.isSkinnedMesh || child.isMesh) {
                 child.frustumCulled = false;
-                child.castShadow = true;
-                child.receiveShadow = true;
+                child.castShadow = false;
+                child.receiveShadow = false;
 
-                // Sanitize materials so character never becomes a black silhouette
+                // Sanitize materials so hero never becomes pitch black
                 if (child.material) {
                     const mats = Array.isArray(child.material) ? child.material : [child.material];
                     for (const m of mats) {
@@ -97,29 +100,46 @@ export class CharacterRigController {
         }
     }
 
+    createBlobShadow() {
+        const shadowGeo = new THREE.CircleGeometry(0.55, 16);
+        shadowGeo.rotateX(-Math.PI / 2);
+        const shadowMat = new THREE.MeshBasicMaterial({
+            color: 0x050810,
+            transparent: true,
+            opacity: 0.38,
+            depthWrite: false
+        });
+        this.blobShadow = new THREE.Mesh(shadowGeo, shadowMat);
+        this.blobShadow.position.set(0, 0.02, 0);
+        this.root.add(this.blobShadow);
+    }
+
     mapBones() {
+        // Layer 1: Comprehensive Regex Pattern
         const patterns = {
-            hips: /(hips|pelvis|root)/i,
-            spine: /(spine[01]?|torso)/i,
-            chest: /(chest|spine2|upper_torso)/i,
-            neck: /(neck)/i,
-            head: /(head)/i,
-            upperArmR: /(upper_?arm\.r|r.*upper.*arm|rightarm)/i,
-            forearmR: /(forearm\.r|r.*forearm|rightforearm)/i,
-            handR: /(hand\.r|r.*hand|righthand|weapon_socket\.r)/i,
-            upperArmL: /(upper_?arm\.l|l.*upper.*arm|leftarm)/i,
-            forearmL: /(forearm\.l|l.*forearm|leftforearm)/i,
-            handL: /(hand\.l|l.*hand|lefthand|weapon_socket\.l)/i,
-            thighR: /(thigh\.r|r.*thigh|rightupleg)/i,
-            calfR: /(calf\.r|r.*calf|rightleg)/i,
-            footR: /(foot\.r|r.*foot|rightfoot)/i,
-            thighL: /(thigh\.l|l.*thigh|leftupleg)/i,
-            calfL: /(calf\.l|l.*calf|leftleg)/i,
-            footL: /(foot\.l|l.*foot|leftfoot)/i
+            hips: /(hips|pelvis|root|mixamorig:?hips|bip01_?pelvis)/i,
+            spine: /(spine[01]?|torso|mixamorig:?spine[01]?|bip01_?spine)/i,
+            chest: /(chest|spine2|upper_torso|mixamorig:?spine2|mixamorig:?chest)/i,
+            neck: /(neck|mixamorig:?neck)/i,
+            head: /(head|mixamorig:?head)/i,
+            upperArmR: /(upper_?arm\.r|r.*upper.*arm|rightarm|mixamorig:?rightarm|bip01_?r_?upperarm|arm\.r|r_arm)/i,
+            forearmR: /(forearm\.r|r.*forearm|rightforearm|mixamorig:?rightforearm|bip01_?r_?forearm|lowerarm\.r)/i,
+            handR: /(hand\.r|r.*hand|righthand|weapon_socket\.r|mixamorig:?righthand|bip01_?r_?hand|wrist\.r)/i,
+            upperArmL: /(upper_?arm\.l|l.*upper.*arm|leftarm|mixamorig:?leftarm|bip01_?l_?upperarm|arm\.l|l_arm)/i,
+            forearmL: /(forearm\.l|l.*forearm|leftforearm|mixamorig:?leftforearm|bip01_?l_?forearm|lowerarm\.l)/i,
+            handL: /(hand\.l|l.*hand|lefthand|weapon_socket\.l|mixamorig:?lefthand|bip01_?l_?hand|wrist\.l)/i,
+            thighR: /(thigh\.r|r.*thigh|rightupleg|mixamorig:?rightupleg|bip01_?r_?thigh|leg\.r|r_leg)/i,
+            calfR: /(calf\.r|r.*calf|rightleg|mixamorig:?rightleg|bip01_?r_?calf|shin\.r|lowerleg\.r)/i,
+            footR: /(foot\.r|r.*foot|rightfoot|mixamorig:?rightfoot|bip01_?r_?foot|ankle\.r)/i,
+            thighL: /(thigh\.l|l.*thigh|leftupleg|mixamorig:?leftupleg|bip01_?l_?thigh|leg\.l|l_leg)/i,
+            calfL: /(calf\.l|l.*calf|leftleg|mixamorig:?leftleg|bip01_?l_?calf|shin\.l|lowerleg\.l)/i,
+            footL: /(foot\.l|l.*foot|leftfoot|mixamorig:?leftfoot|bip01_?l_?foot|ankle\.l)/i
         };
 
+        const allBones = [];
         this.root.traverse((child) => {
             if (child.isBone) {
+                allBones.push(child);
                 const name = child.name;
                 for (const [key, regex] of Object.entries(patterns)) {
                     if (!this.bones[key] && regex.test(name)) {
@@ -127,6 +147,121 @@ export class CharacterRigController {
                     }
                 }
             }
+        });
+
+        // Layer 2: Spatial Geometry Fallback Classifier
+        if (allBones.length > 0) {
+            this.root.updateMatrixWorld(true);
+            const bbox = new THREE.Box3().setFromObject(this.root);
+            const H = Math.max(1.0, bbox.max.y - bbox.min.y);
+            const rootPos = this.root.position;
+
+            const boneInfos = allBones.map(b => {
+                const wp = new THREE.Vector3();
+                b.getWorldPosition(wp);
+                return {
+                    bone: b,
+                    name: b.name,
+                    x: wp.x - rootPos.x,
+                    y: wp.y - rootPos.y,
+                    z: wp.z - rootPos.z,
+                    relY: (wp.y - rootPos.y) / H
+                };
+            });
+
+            // Fallback for hips
+            if (!this.bones.hips) {
+                const hipCand = boneInfos.filter(b => Math.abs(b.x) < 0.12 && b.relY >= 0.40 && b.relY <= 0.62)
+                                         .sort((a, b) => Math.abs(a.relY - 0.52) - Math.abs(b.relY - 0.52))[0];
+                if (hipCand) this.bones.hips = hipCand.bone;
+            }
+
+            // Fallback for spine & chest
+            if (!this.bones.chest) {
+                const chestCand = boneInfos.filter(b => Math.abs(b.x) < 0.12 && b.relY >= 0.60 && b.relY <= 0.82)
+                                           .sort((a, b) => Math.abs(a.relY - 0.72) - Math.abs(b.relY - 0.72))[0];
+                if (chestCand) this.bones.chest = chestCand.bone;
+            }
+            if (!this.bones.spine) {
+                const spineCand = boneInfos.filter(b => Math.abs(b.x) < 0.12 && b.relY >= 0.50 && b.relY <= 0.68)[0];
+                if (spineCand) this.bones.spine = spineCand.bone;
+            }
+
+            // Fallback for Arms (Left = +X, Right = -X)
+            if (!this.bones.upperArmL) {
+                const cand = boneInfos.filter(b => b.x > 0.08 && b.relY >= 0.65 && b.relY <= 0.88)
+                                      .sort((a, b) => a.x - b.x)[0];
+                if (cand) this.bones.upperArmL = cand.bone;
+            }
+            if (!this.bones.forearmL) {
+                const cand = boneInfos.filter(b => b.x > 0.20 && b.relY >= 0.50 && b.relY <= 0.82)[0];
+                if (cand) this.bones.forearmL = cand.bone;
+            }
+            if (!this.bones.handL) {
+                const cand = boneInfos.filter(b => b.x > 0.30 && b.relY <= 0.68)
+                                      .sort((a, b) => b.x - a.x)[0];
+                if (cand) this.bones.handL = cand.bone;
+            }
+
+            if (!this.bones.upperArmR) {
+                const cand = boneInfos.filter(b => b.x < -0.08 && b.relY >= 0.65 && b.relY <= 0.88)
+                                      .sort((a, b) => Math.abs(a.x) - Math.abs(b.x))[0];
+                if (cand) this.bones.upperArmR = cand.bone;
+            }
+            if (!this.bones.forearmR) {
+                const cand = boneInfos.filter(b => b.x < -0.20 && b.relY >= 0.50 && b.relY <= 0.82)[0];
+                if (cand) this.bones.forearmR = cand.bone;
+            }
+            if (!this.bones.handR) {
+                const cand = boneInfos.filter(b => b.x < -0.30 && b.relY <= 0.68)
+                                      .sort((a, b) => Math.abs(b.x) - Math.abs(a.x))[0];
+                if (cand) this.bones.handR = cand.bone;
+            }
+
+            // Fallback for Legs
+            if (!this.bones.thighL) {
+                const cand = boneInfos.filter(b => b.x > 0.03 && b.relY >= 0.35 && b.relY <= 0.54)[0];
+                if (cand) this.bones.thighL = cand.bone;
+            }
+            if (!this.bones.calfL) {
+                const cand = boneInfos.filter(b => b.x > 0.03 && b.relY >= 0.15 && b.relY <= 0.38)[0];
+                if (cand) this.bones.calfL = cand.bone;
+            }
+            if (!this.bones.footL) {
+                const cand = boneInfos.filter(b => b.x > 0.03 && b.relY <= 0.18)[0];
+                if (cand) this.bones.footL = cand.bone;
+            }
+
+            if (!this.bones.thighR) {
+                const cand = boneInfos.filter(b => b.x < -0.03 && b.relY >= 0.35 && b.relY <= 0.54)[0];
+                if (cand) this.bones.thighR = cand.bone;
+            }
+            if (!this.bones.calfR) {
+                const cand = boneInfos.filter(b => b.x < -0.03 && b.relY >= 0.15 && b.relY <= 0.38)[0];
+                if (cand) this.bones.calfR = cand.bone;
+            }
+            if (!this.bones.footR) {
+                const cand = boneInfos.filter(b => b.x < -0.03 && b.relY <= 0.18)[0];
+                if (cand) this.bones.footR = cand.bone;
+            }
+        }
+
+        // Store Rest Pose Transformations for Natural Procedural Skeletal Animation
+        allBones.forEach(b => {
+            b.userData.restQuat = b.quaternion.clone();
+            b.userData.restPos = b.position.clone();
+        });
+
+        console.log(`[RigMapper] ${this.hero.name} mapped:`, {
+            hips: this.bones.hips?.name,
+            chest: this.bones.chest?.name,
+            upperArmR: this.bones.upperArmR?.name,
+            forearmR: this.bones.forearmR?.name,
+            handR: this.bones.handR?.name,
+            thighL: this.bones.thighL?.name,
+            thighR: this.bones.thighR?.name,
+            calfL: this.bones.calfL?.name,
+            calfR: this.bones.calfR?.name
         });
     }
 
@@ -144,22 +279,22 @@ export class CharacterRigController {
         if (!weaponScene) return;
 
         const slug = this.hero.slug || this.hero.id;
-        const handR = this.bones.handR || this.root;
-        const handL = this.bones.handL || this.root;
+        const handR = this.bones.handR || this.bones.chest || this.root;
+        const handL = this.bones.handL || this.bones.chest || this.root;
         const chest = this.bones.chest || this.bones.spine || this.root;
 
         if (slug === 'freya') {
-            // Dual Twin Skyblades (One in HandR, One in HandL)
+            // Dual Twin Skyblades (One locked in HandR palm, One in HandL palm)
             this.weaponMeshR = this.normalizeAndAttachWeapon(weaponScene, handR, 'freya', false);
             this.weaponMeshL = this.normalizeAndAttachWeapon(weaponScene, handL, 'freya', true);
         } else if (slug === 'erine') {
-            // Floating Orbiting Chessboard beside shoulder
+            // Floating Orbiting Chessboard beside right shoulder
             this.weaponMeshR = this.normalizeAndAttachWeapon(weaponScene, chest, 'erine', false);
         } else if (slug === 'michie') {
-            // Infinity Bow on Left Hand
+            // Infinity Bow locked in Left Hand palm
             this.weaponMeshL = this.normalizeAndAttachWeapon(weaponScene, handL, 'michie', true);
         } else {
-            // Christy (Crossbow), Marsha (Scepter), Fiony (Baton) on HandR
+            // Christy (Crossbow), Marsha (Scepter), Fiony (Baton) locked in Right Hand palm
             this.weaponMeshR = this.normalizeAndAttachWeapon(weaponScene, handR, slug, false);
         }
     }
@@ -171,15 +306,16 @@ export class CharacterRigController {
         weaponHolder.name = `WeaponHolder_${heroSlug}_${isLeftHand ? 'L' : 'R'}`;
         const weaponInstance = rawWeaponScene.clone();
 
-        // 1. Sanitize materials so weapon never renders pitch black
+        // 1. Sanitize materials
         weaponInstance.traverse((child) => {
             if (child.isMesh) {
-                child.castShadow = true;
+                child.castShadow = false;
+                child.receiveShadow = false;
                 if (child.material) {
                     const mats = Array.isArray(child.material) ? child.material : [child.material];
                     for (const m of mats) {
                         m.envMapIntensity = 1.0;
-                        if (m.metalness > 0.6) m.metalness = 0.2;
+                        if (m.metalness > 0.6) m.metalness = 0.25;
                         m.roughness = Math.max(m.roughness ?? 0.6, 0.45);
                         if (m.map) m.map.colorSpace = THREE.SRGBColorSpace;
                     }
@@ -187,34 +323,33 @@ export class CharacterRigController {
             }
         });
 
-        // 2. Raw Bounding Box Calculation
+        // 2. Measure raw bounds
         weaponInstance.updateMatrixWorld(true);
         const rawBox = new THREE.Box3().setFromObject(weaponInstance);
         const rawSize = new THREE.Vector3();
         rawBox.getSize(rawSize);
 
-        // Find primary long axis
+        // Primary long axis
         let primaryAxis = 'y';
         let maxDim = rawSize.y;
         if (rawSize.x > maxDim) { maxDim = rawSize.x; primaryAxis = 'x'; }
         if (rawSize.z > maxDim) { maxDim = rawSize.z; primaryAxis = 'z'; }
 
-        // 3. Shift weaponInstance so grip point (~20% from bottom along long axis) sits at (0, 0, 0)
-        // NOT in the center of the blade!
+        // 3. Shift weaponInstance so grip point (~22% from bottom) sits at EXACT (0, 0, 0)
         const center = new THREE.Vector3();
         rawBox.getCenter(center);
 
         const gripOffset = new THREE.Vector3();
         if (primaryAxis === 'y') {
             gripOffset.x = -center.x;
-            gripOffset.y = -(rawBox.min.y + rawSize.y * 0.20);
+            gripOffset.y = -(rawBox.min.y + rawSize.y * 0.22);
             gripOffset.z = -center.z;
         } else if (primaryAxis === 'z') {
             gripOffset.x = -center.x;
             gripOffset.y = -center.y;
-            gripOffset.z = -(rawBox.min.z + rawSize.z * 0.20);
+            gripOffset.z = -(rawBox.min.z + rawSize.z * 0.22);
         } else {
-            gripOffset.x = -(rawBox.min.x + rawSize.x * 0.20);
+            gripOffset.x = -(rawBox.min.x + rawSize.x * 0.22);
             gripOffset.y = -center.y;
             gripOffset.z = -center.z;
         }
@@ -222,51 +357,53 @@ export class CharacterRigController {
         weaponHolder.add(weaponInstance);
 
         // 4. Compensate Hand Bone World Scale
+        parentNode.updateWorldMatrix(true, false);
         const parentWorldScale = new THREE.Vector3();
         parentNode.getWorldScale(parentWorldScale);
         const boneScale = Math.max(0.001, Math.max(parentWorldScale.x, parentWorldScale.y, parentWorldScale.z));
 
-        // 5. Target length in meters for 1.85m character
-        let targetMeters = 0.88;
-        if (heroSlug === 'christy' || heroSlug === 'fiony') targetMeters = 0.62;
-        else if (heroSlug === 'freya') targetMeters = 0.88;
-        else if (heroSlug === 'michie' || heroSlug === 'marsha') targetMeters = 1.05;
+        // 5. Target length in meters for 1.85m hero
+        let targetMeters = 0.85;
+        if (heroSlug === 'christy' || heroSlug === 'fiony') targetMeters = 0.65;
+        else if (heroSlug === 'freya') targetMeters = 0.85;
+        else if (heroSlug === 'michie' || heroSlug === 'marsha') targetMeters = 1.0;
         else if (heroSlug === 'erine') targetMeters = 0.65;
 
         const finalScale = (targetMeters / Math.max(maxDim, 0.001)) / boneScale;
         weaponHolder.scale.setScalar(finalScale);
 
-        // 6. Lock Grip Orientation: Point blade forward/up (+Z / +Y) away from body, NEVER piercing torso!
+        // 6. Lock grip orientation directly in hand bone palm
         if (heroSlug === 'erine') {
-            // Floating chessboard beside right shoulder
-            weaponHolder.position.set(0.65, 1.35, 0.0);
+            // Floating chessboard beside shoulder
+            weaponHolder.position.set(0.48, 0.40, 0.0);
             weaponHolder.rotation.set(0.25, 0, 0);
         } else if (heroSlug === 'michie') {
-            // Bow on Left Hand
-            weaponHolder.position.set(0.02, 0.02, 0.04);
-            weaponHolder.rotation.set(0, 0, isLeftHand ? Math.PI / 2 : -Math.PI / 2);
+            // Bow locked in left palm
+            weaponHolder.position.set(0.0, 0.0, 0.02);
+            weaponHolder.rotation.set(0, 0, Math.PI / 2);
         } else if (heroSlug === 'freya') {
             // Twin Blades
             if (isLeftHand) {
-                weaponHolder.position.set(-0.04, 0.02, 0.08);
-                weaponHolder.rotation.set(Math.PI * 0.45, -Math.PI * 0.2, -Math.PI * 0.1);
+                weaponHolder.position.set(0.0, 0.0, 0.02);
+                weaponHolder.rotation.set(Math.PI * 0.45, -Math.PI * 0.15, 0);
             } else {
-                weaponHolder.position.set(0.04, 0.02, 0.08);
-                weaponHolder.rotation.set(Math.PI * 0.45, Math.PI * 0.2, Math.PI * 0.1);
+                weaponHolder.position.set(0.0, 0.0, 0.02);
+                weaponHolder.rotation.set(Math.PI * 0.45, Math.PI * 0.15, 0);
             }
         } else if (heroSlug === 'christy') {
-            // Crossbow on Right Hand pointing straight forward, resting on forearm
-            weaponHolder.position.set(0.06, 0.04, 0.12);
-            weaponHolder.rotation.set(Math.PI * 0.35, 0, Math.PI * 0.08);
+            // Crossbow forward resting on forearm
+            weaponHolder.position.set(0.02, 0.0, 0.04);
+            weaponHolder.rotation.set(Math.PI * 0.45, 0, 0);
         } else {
-            // Scepter/Baton
-            weaponHolder.position.set(0.04, 0.02, 0.08);
-            weaponHolder.rotation.set(Math.PI * 0.4, 0, 0);
+            // Scepter / Baton in hand palm pointing upright/forward
+            weaponHolder.position.set(0.0, 0.0, 0.02);
+            weaponHolder.rotation.set(Math.PI * 0.45, 0, 0);
         }
 
+        // Attach DIRECTLY to the hand bone
         parentNode.add(weaponHolder);
 
-        // 7. Safety Clamp: World size must not exceed 1.25 meters
+        // 7. Safety Clamp: Never exceed 1.25 meters in world space
         weaponHolder.updateMatrixWorld(true);
         const finalWorldBox = new THREE.Box3().setFromObject(weaponHolder);
         const finalSize = new THREE.Vector3();
@@ -285,53 +422,19 @@ export class CharacterRigController {
         const slug = this.hero.slug || this.hero.id;
 
         if (slug === 'freya') {
-            // Twin Blade Proxy
-            const bladeGeo = new THREE.BoxGeometry(0.06, 0.95, 0.14);
+            const bladeGeo = new THREE.BoxGeometry(0.06, 0.85, 0.12);
             const bladeMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.85, roughness: 0.2 });
-            const blade = new THREE.Mesh(bladeGeo, bladeMat);
-            blade.position.y = 0.45;
-            group.add(blade);
-        } else if (slug === 'erine') {
-            // Chessboard Plate Proxy
-            const plateGeo = new THREE.BoxGeometry(0.55, 0.04, 0.55);
-            const plateMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.6, roughness: 0.3 });
-            group.add(new THREE.Mesh(plateGeo, plateMat));
-        } else if (slug === 'michie') {
-            // Bow Arc Proxy
-            const arcGeo = new THREE.TorusGeometry(0.48, 0.03, 8, 24, Math.PI);
-            const arcMat = new THREE.MeshStandardMaterial({ color: 0xec4899, metalness: 0.7 });
-            group.add(new THREE.Mesh(arcGeo, arcMat));
+            group.add(new THREE.Mesh(bladeGeo, bladeMat));
+        } else if (slug === 'christy') {
+            const crossGeo = new THREE.BoxGeometry(0.55, 0.12, 0.65);
+            const crossMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.7, roughness: 0.3 });
+            group.add(new THREE.Mesh(crossGeo, crossMat));
         } else {
-            // Scepter / Crossbow proxy
-            const shaftGeo = new THREE.CylinderGeometry(0.03, 0.04, 1.2, 8);
-            const shaftMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.2 });
-            const shaft = new THREE.Mesh(shaftGeo, shaftMat);
-            shaft.position.y = 0.55;
-            group.add(shaft);
+            const rodGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.95, 12);
+            const rodMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 });
+            group.add(new THREE.Mesh(rodGeo, rodMat));
         }
 
         return group;
-    }
-
-    update(dt) {
-        // Update floating orbiting chessboard for Erine
-        if (this.orbitWeaponPivot) {
-            this.orbitWeaponPivot.rotation.y += 1.8 * dt;
-            this.orbitWeaponPivot.position.y = 0.25 + Math.sin(Date.now() * 0.003) * 0.08;
-        }
-
-        // Update sword ribbon trail tracking points
-        if (this.weaponMeshR) {
-            this.weaponMeshR.getWorldPosition(this.bladePoints.right.base);
-            // Tip point 0.9m along weapon local Y
-            const tipLocal = new THREE.Vector3(0, 0.9, 0);
-            this.bladePoints.right.tip.copy(this.weaponMeshR.localToWorld(tipLocal));
-        }
-
-        if (this.weaponMeshL) {
-            this.weaponMeshL.getWorldPosition(this.bladePoints.left.base);
-            const tipLocal = new THREE.Vector3(0, 0.9, 0);
-            this.bladePoints.left.tip.copy(this.weaponMeshL.localToWorld(tipLocal));
-        }
     }
 }

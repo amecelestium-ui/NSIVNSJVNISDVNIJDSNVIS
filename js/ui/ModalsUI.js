@@ -426,7 +426,13 @@ export class ModalsUI {
             const card = document.createElement('div');
             card.className = 'codex-prop-card';
             card.innerHTML = `
-                <img src="${AssetRegistry.resolve(p)}" class="codex-prop-img" alt="${rawName}" loading="lazy" onerror="this.onerror=null; this.src='https://onyxpure.my.id/models/${cleanPath}';">
+                <div class="codex-prop-img-box" style="position: relative; width: 100%; height: 90px; display: flex; align-items: center; justify-content: center; background: rgba(5, 8, 14, 0.6); border-radius: 6px; overflow: hidden;">
+                    <img src="${AssetRegistry.resolve(p)}" class="codex-prop-img" alt="${rawName}" loading="lazy" style="max-height: 80px; max-width: 90%; object-fit: contain;"
+                        onerror="if(!this.dataset.t1){this.dataset.t1='1';this.src='https://onyxpure.my.id/models/${cleanPath}';}else if(!this.dataset.t2){this.dataset.t2='1';this.src='https://raw.githubusercontent.com/ashazeneca-cyber/skunvfucjsdheocjs/main/models/${cleanPath}';}else{this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';}">
+                    <div class="codex-fallback-badge" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.7);">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"></polygon><path d="M12 22V12"></path><polyline points="2 8.5 12 12 22 8.5"></polyline></svg>
+                    </div>
+                </div>
                 <div class="codex-prop-name">${rawName}</div>
                 <div class="codex-prop-lore">Struktur terarium megah di Onyx World.</div>
             `;
