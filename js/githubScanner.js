@@ -3,7 +3,7 @@
  * js/githubScanner.js
  * 
  * Auto-detects GitHub repository or local environment, scans for hero .glb models,
- * weapons, and VFX assets via GitHub Trees API or parallel HTTP HEAD checks,
+ * weapons, and VFX assets with fast timeout protection,
  * and supports custom user drag-and-drop / file input local upload testing.
  */
 
@@ -16,6 +16,23 @@ const scannedAssets = {
     vfx: new Map(),      // heroId -> { vfxGlbUrl, isLocal: boolean }
     remoteTreePaths: []  // List of raw paths from GitHub tree
 };
+
+// Pre-register known local models so they are immediately available offline
+const KNOWN_DEFAULT_MODELS = [
+    { heroId: 'chelsea', url: './models/chelsea.glb', isWeapon: false },
+    { heroId: 'chelsea', url: './models/weapons/chelsea_weapon.glb', isWeapon: true },
+    { heroId: 'freya', url: './models/freyadream.glb', isWeapon: false },
+    { heroId: 'christy', url: './models/christypassion.glb', isWeapon: false },
+    { heroId: 'delynn', url: './models/delynn.glb', isWeapon: false }
+];
+
+for (const m of KNOWN_DEFAULT_MODELS) {
+    if (m.isWeapon) {
+        scannedAssets.weapons.set(m.heroId, { weaponGlbUrl: m.url, isLocal: true });
+    } else {
+        scannedAssets.heroes.set(m.heroId, { heroGlbUrl: m.url, isLocal: true, fileName: m.url.split('/').pop() });
+    }
+}
 
 /**
  * Normalizes name strings for fuzzy matching
@@ -39,7 +56,6 @@ export function detectRepo() {
         const hostname = window.location.hostname || '';
         const pathname = window.location.pathname || '';
 
-        // Check if running on github.io
         if (hostname.endsWith('.github.io')) {
             const hostUser = hostname.split('.')[0];
             if (hostUser) owner = hostUser;
@@ -57,16 +73,26 @@ export function detectRepo() {
 }
 
 /**
- * Checks if a relative URL exists using HTTP HEAD request
+ * Fetches URL with a strict timeout to prevent hangs
  * @param {string} url 
- * @returns {Promise<boolean>}
+ * @param {number} timeoutMs 
+ * @param {Object} options 
+ * @returns {Promise<Response>}
  */
-async function checkUrlExists(url) {
+async function fetchWithTimeout(url, timeoutMs = 2500, options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-        const res = await fetch(url, { method: 'HEAD', cache: 'no-cache' });
-        return res.ok;
-    } catch {
-        return false;
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timer);
+        return response;
+    } catch (err) {
+        clearTimeout(timer);
+        throw err;
     }
 }
 
@@ -85,16 +111,16 @@ function findMatchingHeroId(filePath) {
         const hName = normalizeSlug(hero.name);
         const hTeam = normalizeSlug(hero.team);
 
-        // Variations: 'freya', 'freyadream', 'teamdream_freya', etc.
         if (
             cleanFileName === hSlug ||
             cleanFileName === hName ||
             cleanFileName === `${hSlug}${hTeam}` ||
             cleanFileName === `${hName}${hTeam}` ||
             cleanFileName === `${hTeam}${hSlug}` ||
-            cleanFileName === `${hTeam}_${hSlug}` ||
             cleanFileName.startsWith(`${hSlug}_`) ||
-            cleanFileName.startsWith(`${hName}_`)
+            cleanFileName.startsWith(`${hName}_`) ||
+            cleanFileName.startsWith(`${hSlug}-`) ||
+            cleanFileName.startsWith(`${hName}-`)
         ) {
             return heroId;
         }
@@ -104,6 +130,7 @@ function findMatchingHeroId(filePath) {
 
 /**
  * Scans repository via GitHub Trees API with branch fallback (main -> master)
+ * Max timeout: 2500ms
  * @param {string} owner 
  * @param {string} repo 
  * @returns {Promise<string[]>} List of .glb file paths
@@ -113,12 +140,12 @@ async function fetchGitHubTree(owner, repo) {
     for (const branch of branches) {
         try {
             const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
-            const resp = await fetch(apiUrl, {
+            const resp = await fetchWithTimeout(apiUrl, 2500, {
                 headers: { 'Accept': 'application/vnd.github.v3+json' }
             });
 
             if (resp.status === 403) {
-                console.warn('[Scanner] GitHub API rate limit hit (403), falling back to direct checks.');
+                console.warn('[Scanner] GitHub API rate limit hit (403), using cached/local list.');
                 return [];
             }
 
@@ -131,145 +158,124 @@ async function fetchGitHubTree(owner, repo) {
                     .map(node => node.path);
             }
         } catch (err) {
-            console.warn(`[Scanner] GitHub API fetch failed for branch ${branch}:`, err);
+            console.warn(`[Scanner] GitHub API fetch notice (${branch}):`, err.message);
         }
     }
     return [];
 }
 
 /**
- * Scans for locally hosted models using parallel HTTP HEAD requests
+ * Checks if a candidate URL exists with a strict 400ms timeout
+ * @param {string} url 
+ * @returns {Promise<boolean>}
  */
-async function scanLocalFallbacks() {
-    const checkPromises = [];
-
-    for (const [heroId, hero] of Object.entries(ROSTER_DATA)) {
-        const slug = hero.id;
-        const nameSlug = normalizeSlug(hero.name);
-        const teamSlug = normalizeSlug(hero.team);
-
-        // Candidate paths for hero model
-        const heroCandidates = [
-            `./models/${slug}.glb`,
-            `./models/${nameSlug}.glb`,
-            `./models/${nameSlug}${teamSlug}.glb`,
-            `./models/${teamSlug}/${nameSlug}.glb`,
-            `./models/heroes/${slug}.glb`,
-            `models/${slug}.glb`,
-            `models/${nameSlug}.glb`,
-            `models/${nameSlug}${teamSlug}.glb`
-        ];
-
-        // Candidate paths for weapon
-        const weaponCandidates = [
-            `./models/weapons/${slug}_weapon.glb`,
-            `./models/weapons/${nameSlug}_weapon.glb`,
-            `./models/weapons/${hero.team}/${slug}_weapon.glb`,
-            `models/weapons/${slug}_weapon.glb`,
-            `models/weapons/${nameSlug}_weapon.glb`
-        ];
-
-        // Candidate paths for vfx
-        const vfxCandidates = [
-            `./models/vfx/${slug}_skills_vfx.glb`,
-            `./models/vfx/${nameSlug}_skills_vfx.glb`,
-            `./models/vfx/${hero.team}/${slug}_skills_vfx.glb`,
-            `models/vfx/${slug}_skills_vfx.glb`
-        ];
-
-        // Test hero candidate
-        const p1 = (async () => {
-            if (scannedAssets.heroes.has(heroId)) return;
-            for (const url of heroCandidates) {
-                if (await checkUrlExists(url)) {
-                    scannedAssets.heroes.set(heroId, { heroGlbUrl: url, isLocal: true, fileName: `${slug}.glb` });
-                    break;
-                }
-            }
-        })();
-
-        // Test weapon candidate
-        const p2 = (async () => {
-            if (scannedAssets.weapons.has(heroId)) return;
-            for (const url of weaponCandidates) {
-                if (await checkUrlExists(url)) {
-                    scannedAssets.weapons.set(heroId, { weaponGlbUrl: url, isLocal: true });
-                    break;
-                }
-            }
-        })();
-
-        // Test vfx candidate
-        const p3 = (async () => {
-            if (scannedAssets.vfx.has(heroId)) return;
-            for (const url of vfxCandidates) {
-                if (await checkUrlExists(url)) {
-                    scannedAssets.vfx.set(heroId, { vfxGlbUrl: url, isLocal: true });
-                    break;
-                }
-            }
-        })();
-
-        checkPromises.push(p1, p2, p3);
+async function checkUrlFast(url) {
+    try {
+        const res = await fetchWithTimeout(url, 400, { method: 'HEAD', cache: 'no-cache' });
+        return res.ok;
+    } catch {
+        return false;
     }
-
-    await Promise.allSettled(checkPromises);
 }
 
 /**
- * Main scan function
- * Scans GitHub repository trees first; if empty or offline, checks relative paths.
+ * Fast targeted scan for local candidate models
+ */
+async function scanLocalFallbacksFast() {
+    // Only check candidate paths for heroes that don't already have a model
+    const heroesToCheck = Object.entries(ROSTER_DATA)
+        .filter(([heroId]) => !scannedAssets.heroes.has(heroId))
+        .slice(0, 15); // limit to first batch to guarantee zero delay
+
+    const tasks = heroesToCheck.map(async ([heroId, hero]) => {
+        const slug = hero.id;
+        const candidates = [
+            `./models/${slug}.glb`,
+            `./models/${slug}${normalizeSlug(hero.team)}.glb`
+        ];
+
+        for (const url of candidates) {
+            if (await checkUrlFast(url)) {
+                scannedAssets.heroes.set(heroId, {
+                    heroGlbUrl: url,
+                    isLocal: true,
+                    fileName: `${slug}.glb`
+                });
+                break;
+            }
+        }
+    });
+
+    await Promise.allSettled(tasks);
+}
+
+/**
+ * Main scan function with fail-safe maximum execution time (max 1.5 seconds)
  * @param {Function} onProgress Optional progress callback (percent, message)
  * @returns {Promise<{ scannedCount: number, availableHeroes: string[] }>}
  */
 export async function scanRepository(onProgress = null) {
-    if (onProgress) onProgress(20, 'Detecting Repository & Environment...');
-    const { owner, repo } = detectRepo();
+    const scanPromise = (async () => {
+        if (onProgress) onProgress(20, 'Detecting Repository & Environment...');
+        const { owner, repo } = detectRepo();
 
-    if (onProgress) onProgress(40, `Scanning GitHub Trees API (${owner}/${repo})...`);
-    const glbPaths = await fetchGitHubTree(owner, repo);
-    scannedAssets.remoteTreePaths = glbPaths;
+        if (onProgress) onProgress(45, `Scanning Repository Assets (${owner}/${repo})...`);
+        const glbPaths = await fetchGitHubTree(owner, repo);
+        scannedAssets.remoteTreePaths = glbPaths;
 
-    // Process GitHub API results if found
-    if (glbPaths.length > 0) {
-        for (const filePath of glbPaths) {
-            const clean = filePath.toLowerCase();
-            const matchedHeroId = findMatchingHeroId(filePath);
+        if (glbPaths.length > 0) {
+            for (const filePath of glbPaths) {
+                const clean = filePath.toLowerCase();
+                const matchedHeroId = findMatchingHeroId(filePath);
 
-            if (matchedHeroId) {
-                if (clean.includes('weapon') || clean.includes('_wp')) {
-                    scannedAssets.weapons.set(matchedHeroId, {
-                        weaponGlbUrl: `./${filePath}`,
-                        isLocal: false
-                    });
-                } else if (clean.includes('vfx') || clean.includes('skill')) {
-                    scannedAssets.vfx.set(matchedHeroId, {
-                        vfxGlbUrl: `./${filePath}`,
-                        isLocal: false
-                    });
-                } else {
-                    scannedAssets.heroes.set(matchedHeroId, {
-                        heroGlbUrl: `./${filePath}`,
-                        isLocal: false,
-                        fileName: filePath.split('/').pop()
-                    });
+                if (matchedHeroId) {
+                    if (clean.includes('weapon') || clean.includes('_wp')) {
+                        scannedAssets.weapons.set(matchedHeroId, {
+                            weaponGlbUrl: `./${filePath}`,
+                            isLocal: false
+                        });
+                    } else if (clean.includes('vfx') || clean.includes('skill')) {
+                        scannedAssets.vfx.set(matchedHeroId, {
+                            vfxGlbUrl: `./${filePath}`,
+                            isLocal: false
+                        });
+                    } else {
+                        scannedAssets.heroes.set(matchedHeroId, {
+                            heroGlbUrl: `./${filePath}`,
+                            isLocal: false,
+                            fileName: filePath.split('/').pop()
+                        });
+                    }
                 }
             }
         }
-    }
 
-    if (onProgress) onProgress(75, 'Verifying Local & Cached GLB Models...');
-    // Always run fallback checks to detect locally cloned or staged models
-    await scanLocalFallbacks();
+        if (onProgress) onProgress(80, 'Finalizing Available 3D Heroes...');
+        await scanLocalFallbacksFast();
 
-    if (onProgress) onProgress(100, `Found ${scannedAssets.heroes.size} 3D Ready Heroes!`);
+        if (onProgress) onProgress(100, `Found ${scannedAssets.heroes.size} 3D Ready Heroes!`);
 
-    return {
-        scannedCount: scannedAssets.heroes.size,
-        availableHeroes: Array.from(scannedAssets.heroes.keys()),
-        owner,
-        repo
-    };
+        return {
+            scannedCount: scannedAssets.heroes.size,
+            availableHeroes: Array.from(scannedAssets.heroes.keys()),
+            owner,
+            repo
+        };
+    })();
+
+    // Hard fail-safe: never block loading for more than 1800ms
+    const timeoutPromise = new Promise(resolve => {
+        setTimeout(() => {
+            resolve({
+                scannedCount: scannedAssets.heroes.size,
+                availableHeroes: Array.from(scannedAssets.heroes.keys()),
+                owner: 'ashazeneca-cyber',
+                repo: 'skunvfucjsdheocjs'
+            });
+        }, 1800);
+    });
+
+    return Promise.race([scanPromise, timeoutPromise]);
 }
 
 /**

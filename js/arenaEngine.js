@@ -266,8 +266,12 @@ export class ArenaEngine {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         // PBR Studio Environment
-        const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-        this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.05).texture;
+        try {
+            const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+            this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.05).texture;
+        } catch (e) {
+            console.warn('[ArenaEngine] RoomEnvironment fallback to ambient lighting:', e);
+        }
 
         // Directional Sun / Arena Light
         this.sunLight = new THREE.DirectionalLight(0xfff5e6, 2.8);

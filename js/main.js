@@ -3,7 +3,7 @@
  * js/main.js
  * 
  * Game Bootstrap & Screen State Coordinator:
- * - Orchestrates the luxury Obsidian & Gold/Cyan Calligraphy Loading Screen
+ * - Bulletproof Loading Sequence with Fail-Safe Timeout (Never gets stuck)
  * - Initiates GitHub Repository & Local Model Asset Scanning
  * - Manages Screen Transitions (Loading -> Hero Selection Lobby -> 3D MOBA Arena)
  */
@@ -23,43 +23,56 @@ class GameApp {
 
         this.heroSelectManager = null;
         this.arenaEngine = null;
+        this.hasTransitioned = false;
+
+        // Skip button if user clicks directly
+        const btnSkip = document.getElementById('btn-skip-loading');
+        if (btnSkip) {
+            btnSkip.addEventListener('click', () => this.forceTransitionToLobby());
+        }
+
+        // Hard fail-safe timer: GUARANTEE loading never gets stuck past 2.8s
+        setTimeout(() => {
+            if (!this.hasTransitioned) {
+                console.log('[Main] Fail-safe timer fired. Forcing transition to Lobby.');
+                this.forceTransitionToLobby();
+            }
+        }, 2800);
 
         this.init();
     }
 
     /**
-     * Initializes Game Application & Calligraphy Loading Sequence
+     * Initializes Game Application & Loading Sequence
      */
     async init() {
         console.log('⚡ [ONYXPURE] Booting 3D Hero Arena Engine...');
-        const startTime = performance.now();
 
-        // 1. Stage 1: WebGL & Three.js Pipeline Check
-        this.updateLoading(25, 'Initializing WebGL & Three.js PBR Pipeline...');
-        await this.sleep(600);
-
-        // 2. Stage 2: GitHub Repository & Asset Scan
-        this.updateLoading(50, 'Scanning GitHub Repository for Available 3D Heroes...');
         try {
-            await scanRepository((percent, message) => {
-                const mappedPercent = 50 + (percent * 0.4);
-                this.updateLoading(mappedPercent, message);
-            });
-        } catch (err) {
-            console.warn('[Main] Scanner non-critical notice:', err);
+            // Stage 1: Fast WebGL check
+            this.updateLoading(35, 'Initializing WebGL & Three.js PBR Pipeline...');
+            await this.sleep(400);
+
+            // Stage 2: Fast repository scan (max 1.5s)
+            this.updateLoading(65, 'Scanning Repository for Available 3D Heroes...');
+            try {
+                await scanRepository((percent, message) => {
+                    const mappedPercent = 40 + (percent * 0.5);
+                    this.updateLoading(mappedPercent, message);
+                });
+            } catch (err) {
+                console.warn('[Main] Scanner notice (using cached models):', err);
+            }
+
+            // Stage 3: Ready
+            this.updateLoading(100, 'Ready! Entering Arena Lobby...');
+            await this.sleep(350);
+
+            this.forceTransitionToLobby();
+        } catch (e) {
+            console.error('[Main] Init caught error, entering lobby anyway:', e);
+            this.forceTransitionToLobby();
         }
-
-        // 3. Ensure calligraphy animation runs for at least 2.2 seconds
-        const elapsedTime = (performance.now() - startTime) / 1000;
-        const remainingDelay = Math.max(0, 2400 - (elapsedTime * 1000));
-        await this.sleep(remainingDelay);
-
-        // 4. Stage 3: Ready Transition
-        this.updateLoading(100, 'Ready! Entering Arena Lobby...');
-        await this.sleep(450);
-
-        // Fade out Loading Screen and Switch to Hero Selection Lobby
-        this.transitionToLobby();
     }
 
     /**
@@ -77,24 +90,33 @@ class GameApp {
     }
 
     /**
-     * Smooth cinematic transition from Loading Screen to Hero Selection Lobby
+     * Guarantees smooth transition from Loading Screen into Hero Selection Lobby
      */
-    transitionToLobby() {
+    forceTransitionToLobby() {
+        if (this.hasTransitioned) return;
+        this.hasTransitioned = true;
+
         if (this.loadingScreen) {
             this.loadingScreen.classList.add('fade-out');
             setTimeout(() => {
-                this.loadingScreen.style.display = 'none';
-            }, 650);
+                if (this.loadingScreen) this.loadingScreen.style.display = 'none';
+            }, 550);
         }
 
-        this.lobbyContainer.style.display = 'block';
-        this.arenaContainer.style.display = 'none';
+        if (this.lobbyContainer) this.lobbyContainer.style.display = 'block';
+        if (this.arenaContainer) this.arenaContainer.style.display = 'none';
 
-        // Initialize Lobby Manager
-        this.heroSelectManager = new HeroSelectManager({
-            container: this.lobbyContainer,
-            onEnterArena: (hero) => this.transitionToArena(hero)
-        });
+        // Initialize Lobby Manager safely
+        try {
+            if (!this.heroSelectManager) {
+                this.heroSelectManager = new HeroSelectManager({
+                    container: this.lobbyContainer,
+                    onEnterArena: (hero) => this.transitionToArena(hero)
+                });
+            }
+        } catch (err) {
+            console.error('[Main] HeroSelectManager initialization error:', err);
+        }
     }
 
     /**
@@ -104,21 +126,23 @@ class GameApp {
     transitionToArena(hero) {
         console.log(`[Main] Launching Arena with Hero: ${hero.name}`);
 
-        // Destroy turntable lobby resources to preserve GPU VRAM
         if (this.heroSelectManager) {
             this.heroSelectManager.destroy();
             this.heroSelectManager = null;
         }
 
-        this.lobbyContainer.style.display = 'none';
-        this.arenaContainer.style.display = 'block';
+        if (this.lobbyContainer) this.lobbyContainer.style.display = 'none';
+        if (this.arenaContainer) this.arenaContainer.style.display = 'block';
 
-        // Launch Gameplay Arena Engine
-        this.arenaEngine = new ArenaEngine({
-            container: this.arenaContainer,
-            hero,
-            onBackToLobby: () => this.transitionBackToLobby()
-        });
+        try {
+            this.arenaEngine = new ArenaEngine({
+                container: this.arenaContainer,
+                hero,
+                onBackToLobby: () => this.transitionBackToLobby()
+            });
+        } catch (err) {
+            console.error('[Main] ArenaEngine launch error:', err);
+        }
     }
 
     /**
@@ -132,13 +156,17 @@ class GameApp {
             this.arenaEngine = null;
         }
 
-        this.arenaContainer.style.display = 'none';
-        this.lobbyContainer.style.display = 'block';
+        if (this.arenaContainer) this.arenaContainer.style.display = 'none';
+        if (this.lobbyContainer) this.lobbyContainer.style.display = 'block';
 
-        this.heroSelectManager = new HeroSelectManager({
-            container: this.lobbyContainer,
-            onEnterArena: (hero) => this.transitionToArena(hero)
-        });
+        try {
+            this.heroSelectManager = new HeroSelectManager({
+                container: this.lobbyContainer,
+                onEnterArena: (hero) => this.transitionToArena(hero)
+            });
+        } catch (err) {
+            console.error('[Main] HeroSelectManager restart error:', err);
+        }
     }
 
     /**

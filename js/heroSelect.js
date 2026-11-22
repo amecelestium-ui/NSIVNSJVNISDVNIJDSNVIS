@@ -318,8 +318,12 @@ export class HeroSelectManager {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         // Environment Map (Soft Studio Lighting)
-        const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-        this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+        try {
+            const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+            this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+        } catch (e) {
+            console.warn('[HeroSelect] RoomEnvironment fallback to ambient lighting:', e);
+        }
 
         // Directional Key Light
         this.keyLight = new THREE.DirectionalLight(0xffffff, 2.5);

@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ONYXPURE — JKT48 3D Arena</title>
 
-    <!-- Google Web Fonts: Cinzel (Calligraphy/Luxury) & Outfit (Modern UI) -->
+    <!-- Google Web Fonts: Cinzel (Luxury Hero Title) & Outfit (Modern Esports UI) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <!-- Stylesheet -->
     <link rel="stylesheet" href="./css/style.css">
@@ -26,71 +26,84 @@
 <body>
 
     <!-- =======================================================================
-         1. LOADING SCREEN DENGAN KALIGRAFI ARTISTIK "ONYXPURE"
+         1. LUXURY LOADING SCREEN WITH MAJESTIC "ONYXPURE" CREST & LOGOTYPE
          ======================================================================= -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-embers"></div>
+        <div class="loading-aurora"></div>
 
         <div class="loading-content">
-            <!-- Modern Shodo/Brush Calligraphy SVG "ONYXPURE" -->
-            <div class="calligraphy-box">
-                <svg class="svg-calligraphy" viewBox="0 0 680 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Gradient Definition for Luxury Gold & Cyan Glow -->
+            <!-- Majestic 3D Hexagonal Hero Crest -->
+            <div class="brand-crest-wrapper">
+                <svg class="brand-crest-svg" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
-                        <linearGradient id="calligraphyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#f59e0b" />
-                            <stop offset="45%" stop-color="#38bdf8" />
-                            <stop offset="80%" stop-color="#ec4899" />
-                            <stop offset="100%" stop-color="#fbbf24" />
+                        <linearGradient id="crestGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#fde68a" />
+                            <stop offset="50%" stop-color="#f59e0b" />
+                            <stop offset="100%" stop-color="#b45309" />
                         </linearGradient>
+                        <linearGradient id="crestCyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#e0f2fe" />
+                            <stop offset="50%" stop-color="#38bdf8" />
+                            <stop offset="100%" stop-color="#0284c7" />
+                        </linearGradient>
+                        <filter id="crestGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="6" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
                     </defs>
 
-                    <!-- Artistic Brush Strokes for "ONYXPURE" -->
-                    <!-- O -->
-                    <path class="calligraphy-stroke" d="M 50 80 C 50 35, 95 25, 115 50 C 135 75, 125 125, 95 130 C 65 135, 50 115, 50 80 Z" 
-                          stroke="url(#calligraphyGradient)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
-                    
-                    <!-- N -->
-                    <path class="calligraphy-stroke" d="M 150 128 L 150 34 L 205 128 L 205 34" 
-                          stroke="url(#calligraphyGradient)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <!-- Outer Hexagonal Rune Ring -->
+                    <polygon points="80,12 138,45 138,115 80,148 22,115 22,45" 
+                             stroke="url(#crestCyanGrad)" stroke-width="2.5" fill="none" opacity="0.65" class="crest-outer-spin" />
 
-                    <!-- Y -->
-                    <path class="calligraphy-stroke" d="M 235 34 L 260 84 L 285 34 M 260 84 L 260 130" 
-                          stroke="url(#calligraphyGradient)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <!-- Inner Beveled Golden Crest -->
+                    <polygon points="80,24 126,51 126,109 80,136 34,109 34,51" 
+                             stroke="url(#crestGoldGrad)" stroke-width="3" fill="rgba(15, 23, 42, 0.75)" filter="url(#crestGlow)" />
 
-                    <!-- X -->
-                    <path class="calligraphy-stroke" d="M 315 36 L 365 128 M 365 36 L 315 128" 
-                          stroke="url(#calligraphyGradient)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <!-- Celestial Angel Wings & Center Sword/Diamond -->
+                    <!-- Left Wing -->
+                    <path d="M 40 80 Q 55 50 80 40 Q 60 70 50 95 Z" fill="url(#crestCyanGrad)" opacity="0.85" />
+                    <!-- Right Wing -->
+                    <path d="M 120 80 Q 105 50 80 40 Q 100 70 110 95 Z" fill="url(#crestCyanGrad)" opacity="0.85" />
 
-                    <!-- P -->
-                    <path class="calligraphy-stroke" d="M 400 130 L 400 34 L 435 34 C 460 34, 460 80, 435 80 L 400 80" 
-                          stroke="url(#calligraphyGradient)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" />
-
-                    <!-- U -->
-                    <path class="calligraphy-stroke" d="M 485 34 L 485 100 C 485 128, 530 128, 530 100 L 530 34" 
-                          stroke="url(#calligraphyGradient)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" />
-
-                    <!-- R -->
-                    <path class="calligraphy-stroke" d="M 560 130 L 560 34 L 595 34 C 615 34, 615 76, 595 76 L 560 76 M 588 76 L 618 130" 
-                          stroke="url(#calligraphyGradient)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" />
-
-                    <!-- E -->
-                    <path class="calligraphy-stroke" d="M 645 34 L 645 130 M 645 34 L 675 34 M 645 82 L 670 82 M 645 130 L 675 130" 
-                          stroke="url(#calligraphyGradient)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <!-- Center Astral Diamond Gem -->
+                    <polygon points="80,52 94,80 80,108 66,80" fill="url(#crestGoldGrad)" filter="url(#crestGlow)" />
+                    <!-- Diamond Core Highlight -->
+                    <circle cx="80" cy="80" r="4" fill="#ffffff" />
                 </svg>
             </div>
 
-            <div class="loading-subtitle">3D HERO ARENA ENGINE</div>
+            <!-- Majestic Luxury Logotype "ONYXPURE" -->
+            <div class="brand-title-group">
+                <h1 class="brand-logotype">
+                    <span class="letter-onyx">ONYX</span><span class="letter-pure">PURE</span>
+                </h1>
+                <div class="brand-shimmer-bar"></div>
+            </div>
 
-            <!-- Animated Progress Bar -->
+            <!-- Grand Ornamental Subtitle -->
+            <div class="loading-ornament-row">
+                <span class="ornament-line"></span>
+                <span class="ornament-text">✦ JKT48 3D HERO ARENA ✦</span>
+                <span class="ornament-line"></span>
+            </div>
+
+            <!-- Sleek Modern Progress Bar -->
             <div class="loading-bar-track">
                 <div id="loading-bar-fill" class="loading-bar-fill"></div>
             </div>
 
-            <!-- Dynamic Status Log -->
+            <!-- Dynamic Real-Time Status -->
             <div id="loading-status-text" class="loading-status-text">
                 Initializing WebGL & Three.js PBR Pipeline...
             </div>
+
+            <!-- Instant Access Button (Always Ready) -->
+            <button id="btn-skip-loading" class="btn-skip-loading">
+                <span>MASUK LOBI SEKARANG</span>
+                <span class="btn-arrow">➔</span>
+            </button>
         </div>
     </div>
 
