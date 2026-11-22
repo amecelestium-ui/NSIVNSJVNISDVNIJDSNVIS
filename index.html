@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ONYXPURE — JKT48 3D Arena</title>
+    <title>ONYXPURE — JKT48 3D MOBA & Open-World Arena</title>
 
-    <!-- Google Web Fonts: Cinzel (Luxury Hero Title) & Outfit (Modern Esports UI) -->
+    <!-- Luxury Typography: Cinzel Decorative, Yuji Boku (Calligraphy) & Plus Jakarta Sans (Clean Modern Luxury) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Yuji+Boku&display=swap" rel="stylesheet">
 
-    <!-- Stylesheet -->
-    <link rel="stylesheet" href="./css/style.css">
+    <!-- Design System Modular Stylesheets -->
+    <link rel="stylesheet" href="./css/tokens.css">
+    <link rel="stylesheet" href="./css/loading_lobby.css">
+    <link rel="stylesheet" href="./css/combat_hud.css">
+    <link rel="stylesheet" href="./css/modals_menus.css">
 
     <!-- Three.js r170 CDN Import Map -->
     <script type="importmap">
@@ -25,99 +28,127 @@
 </head>
 <body>
 
+    <!-- 3D Graphics Canvas (Full Viewport) -->
+    <canvas id="game-canvas"></canvas>
+
     <!-- =======================================================================
-         1. LUXURY LOADING SCREEN WITH MAJESTIC "ONYXPURE" CREST & LOGOTYPE
+         1. LOADING SCREEN (Pure Black Initial -> Calligraphy Draw -> BG Reveal -> Lobby)
          ======================================================================= -->
     <div id="loading-screen" class="loading-screen">
-        <div class="loading-embers"></div>
-        <div class="loading-aurora"></div>
+        <!-- Background Image from Asset list (fades in after calligraphy begins) -->
+        <div id="loading-bg-backdrop" class="loading-bg-backdrop"></div>
+        <div class="loading-particles"></div>
 
         <div class="loading-content">
-            <!-- Majestic 3D Hexagonal Hero Crest -->
-            <div class="brand-crest-wrapper">
-                <svg class="brand-crest-svg" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Celestial Pure White Crest Vector SVG -->
+            <div class="brand-crest-box">
+                <svg class="brand-crest-svg" viewBox="0 0 240 200" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
-                        <linearGradient id="crestGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#fde68a" />
-                            <stop offset="50%" stop-color="#f59e0b" />
-                            <stop offset="100%" stop-color="#b45309" />
-                        </linearGradient>
-                        <linearGradient id="crestCyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#e0f2fe" />
-                            <stop offset="50%" stop-color="#38bdf8" />
-                            <stop offset="100%" stop-color="#0284c7" />
-                        </linearGradient>
-                        <filter id="crestGlow" x="-20%" y="-20%" width="140%" height="140%">
-                            <feGaussianBlur stdDeviation="6" result="blur" />
+                        <filter id="pureGlow" x="-30%" y="-30%" width="160%" height="160%">
+                            <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="rgba(56, 189, 248, 0.55)" />
+                            <feGaussianBlur stdDeviation="3" result="blur" />
                             <feComposite in="SourceGraphic" in2="blur" operator="over" />
                         </filter>
                     </defs>
 
-                    <!-- Outer Hexagonal Rune Ring -->
-                    <polygon points="80,12 138,45 138,115 80,148 22,115 22,45" 
-                             stroke="url(#crestCyanGrad)" stroke-width="2.5" fill="none" opacity="0.65" class="crest-outer-spin" />
+                    <g fill="#ffffff" filter="url(#pureGlow)">
+                        <!-- Top Ornamental Crown -->
+                        <path d="M 82 46 C 96 32 112 42 120 34 C 128 42 144 32 158 46 C 150 51 140 45 132 50 C 126 44 120 44 114 50 C 104 45 92 51 82 46 Z" />
+                        <circle cx="120" cy="51" r="4.2" />
 
-                    <!-- Inner Beveled Golden Crest -->
-                    <polygon points="80,24 126,51 126,109 80,136 34,109 34,51" 
-                             stroke="url(#crestGoldGrad)" stroke-width="3" fill="rgba(15, 23, 42, 0.75)" filter="url(#crestGlow)" />
+                        <!-- Left Spiral Wing -->
+                        <path d="M 120 72 C 104 56 70 60 62 92 C 54 126 84 142 106 130 C 122 121 126 102 114 92 C 104 84 90 92 92 104 C 93 112 101 116 107 112 C 98 120 80 114 80 98 C 80 78 104 70 120 84 Z" />
 
-                    <!-- Celestial Angel Wings & Center Sword/Diamond -->
-                    <!-- Left Wing -->
-                    <path d="M 40 80 Q 55 50 80 40 Q 60 70 50 95 Z" fill="url(#crestCyanGrad)" opacity="0.85" />
-                    <!-- Right Wing -->
-                    <path d="M 120 80 Q 105 50 80 40 Q 100 70 110 95 Z" fill="url(#crestCyanGrad)" opacity="0.85" />
+                        <!-- Right Spiral Wing (Symmetrical) -->
+                        <path d="M 120 72 C 136 56 170 60 178 92 C 186 126 156 142 134 130 C 118 121 114 102 126 92 C 136 84 150 92 148 104 C 147 112 139 116 133 112 C 142 120 160 114 160 98 C 160 78 136 70 120 84 Z" />
 
-                    <!-- Center Astral Diamond Gem -->
-                    <polygon points="80,52 94,80 80,108 66,80" fill="url(#crestGoldGrad)" filter="url(#crestGlow)" />
-                    <!-- Diamond Core Highlight -->
-                    <circle cx="80" cy="80" r="4" fill="#ffffff" />
+                        <!-- Center Diamond Core -->
+                        <polygon points="120,78 138,102 120,126 102,102" />
+
+                        <!-- Bottom Sweeping Flourishes -->
+                        <path d="M 88 134 C 100 152 114 158 120 160 C 126 158 140 152 152 134 C 146 148 134 168 120 168 C 106 168 94 148 88 134 Z" />
+
+                        <!-- Hanging Tear Droplet -->
+                        <path d="M 120 169 C 116 174 113 178 113 183 C 113 187 116 190 120 190 C 124 190 127 187 127 183 C 127 178 124 174 120 169 Z" />
+
+                        <!-- Flanking Accent Diamonds -->
+                        <polygon points="106,178 108.5,181 106,184 103.5,181" />
+                        <polygon points="134,178 136.5,181 134,184 131.5,181" />
+                    </g>
                 </svg>
             </div>
 
-            <!-- Majestic Luxury Logotype "ONYXPURE" -->
-            <div class="brand-title-group">
-                <h1 class="brand-logotype">
-                    <span class="letter-onyx">ONYX</span><span class="letter-pure">PURE</span>
-                </h1>
-                <div class="brand-shimmer-bar"></div>
+            <!-- Authentic Japanese Shodo Brush / Calligraphy Drawing Animation -->
+            <div class="calligraphy-wrap">
+                <svg class="calligraphy-svg" viewBox="0 0 710 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="brushGold" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#ffffff"/>
+                            <stop offset="28%" stop-color="#fbbf24"/>
+                            <stop offset="72%" stop-color="#38bdf8"/>
+                            <stop offset="100%" stop-color="#fbbf24"/>
+                        </linearGradient>
+                        <filter id="brushGlow">
+                            <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="rgba(251, 191, 36, 0.85)"/>
+                            <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="rgba(56, 189, 248, 0.5)"/>
+                        </filter>
+                    </defs>
+                    <g stroke="url(#brushGold)" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" filter="url(#brushGlow)">
+                        <!-- O -->
+                        <path class="shodo-path" d="M 68 28 C 36 28, 22 50, 22 66 C 22 84, 38 100, 68 100 C 96 100, 112 84, 112 65 C 112 46, 96 28, 68 28 Z" style="stroke-dasharray: 290; stroke-dashoffset: 290; animation: brushDraw 0.75s ease forwards 0.12s;"/>
+                        <!-- N -->
+                        <path class="shodo-path" d="M 136 98 L 136 32 L 194 98 L 194 32" style="stroke-dasharray: 260; stroke-dashoffset: 260; animation: brushDraw 0.75s ease forwards 0.32s;"/>
+                        <!-- Y -->
+                        <path class="shodo-path" d="M 220 32 L 250 66 L 280 32 M 250 66 L 250 98" style="stroke-dasharray: 190; stroke-dashoffset: 190; animation: brushDraw 0.75s ease forwards 0.48s;"/>
+                        <!-- X -->
+                        <path class="shodo-path" d="M 306 32 L 358 98 M 358 32 L 306 98" style="stroke-dasharray: 210; stroke-dashoffset: 210; animation: brushDraw 0.75s ease forwards 0.62s;"/>
+                        <!-- P -->
+                        <path class="shodo-path" d="M 390 98 L 390 32 L 428 32 C 448 32, 456 44, 456 56 C 456 68, 446 76, 426 76 L 390 76" style="stroke-dasharray: 250; stroke-dashoffset: 250; animation: brushDraw 0.75s ease forwards 0.76s;"/>
+                        <!-- U -->
+                        <path class="shodo-path" d="M 488 32 L 488 80 C 488 94, 498 100, 516 100 C 534 100, 544 94, 544 80 L 544 32" style="stroke-dasharray: 230; stroke-dashoffset: 230; animation: brushDraw 0.75s ease forwards 0.88s;"/>
+                        <!-- R -->
+                        <path class="shodo-path" d="M 574 98 L 574 32 L 608 32 C 624 32, 632 42, 632 54 C 632 65, 622 72, 604 72 L 574 72 M 604 72 L 632 98" style="stroke-dasharray: 270; stroke-dashoffset: 270; animation: brushDraw 0.75s ease forwards 0.98s;"/>
+                        <!-- E -->
+                        <path class="shodo-path" d="M 696 32 L 656 32 L 656 98 L 696 98 M 656 65 L 688 65" style="stroke-dasharray: 210; stroke-dashoffset: 210; animation: brushDraw 0.75s ease forwards 1.08s;"/>
+                    </g>
+                </svg>
+                <!-- Majestic Calligraphy Typography Layer -->
+                <h1 class="brand-title-calligraphy">ONYXPURE</h1>
             </div>
 
-            <!-- Grand Ornamental Subtitle -->
-            <div class="loading-ornament-row">
-                <span class="ornament-line"></span>
-                <span class="ornament-text">✦ JKT48 3D HERO ARENA ✦</span>
-                <span class="ornament-line"></span>
+            <!-- Clean Subtitle (Zero Reia mention) -->
+            <div class="brand-subtitle">
+                <span class="sub-text">JKT48 3D MOBA & OPEN-WORLD ARENA</span>
             </div>
 
-            <!-- Sleek Modern Progress Bar -->
+            <!-- Glowing Progress Bar -->
             <div class="loading-bar-track">
                 <div id="loading-bar-fill" class="loading-bar-fill"></div>
             </div>
 
-            <!-- Dynamic Real-Time Status -->
+            <!-- Dynamic Status Text -->
             <div id="loading-status-text" class="loading-status-text">
-                Initializing WebGL & Three.js PBR Pipeline...
+                Menginisialisasi WebGL 3D Pipeline...
             </div>
 
-            <!-- Instant Access Button (Always Ready) -->
-            <button id="btn-skip-loading" class="btn-skip-loading">
+            <!-- Instant Fast Access Button (Always Clickable) -->
+            <button id="btn-skip-loading" class="btn-skip-loading" onclick="window.enterLobbyNow ? window.enterLobbyNow() : null">
                 <span>MASUK LOBI SEKARANG</span>
                 <span class="btn-arrow">➔</span>
             </button>
         </div>
     </div>
 
-    <!-- =======================================================================
-         2. LOBBY / LAYAR PEMILIHAN HERO 3D (Injected by js/heroSelect.js)
-         ======================================================================= -->
+    <!-- 2. LOBBY CONTAINER -->
     <div id="lobby-container" style="display: none;"></div>
 
-    <!-- =======================================================================
-         3. ENGINE GAMEPLAY ARENA 3D (Injected by js/arenaEngine.js)
-         ======================================================================= -->
-    <div id="arena-container" style="display: none;"></div>
+    <!-- 3. COMBAT HUD CONTAINER -->
+    <div id="combat-container" style="display: none;"></div>
 
-    <!-- Main JavaScript Bootstrap -->
+    <!-- 4. MODALS CONTAINER -->
+    <div id="modals-container"></div>
+
+    <!-- Master Application Orchestrator -->
     <script type="module" src="./js/main.js"></script>
 </body>
 </html>

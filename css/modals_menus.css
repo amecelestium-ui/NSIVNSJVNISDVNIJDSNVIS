@@ -1,0 +1,254 @@
+/**
+ * ONYXPURE — JKT48 3D MOBA × OPEN-WORLD ARENA
+ * css/modals_menus.css
+ * 
+ * Modals & Overlay Menus:
+ * - 24 Item Shop + Quick Buy
+ * - Gacha Summon Vortex with 5 Chests
+ * - Rank & Leaderboard
+ * - Quest & Inventory
+ * - Settings & Live Custom HUD Layout Editor
+ */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(4, 7, 13, 0.75);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.modal-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-window {
+    width: 90%;
+    max-width: 780px;
+    max-height: 85vh;
+    background: var(--bg-panel-solid);
+    border: 1.5px solid var(--border-glow);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px var(--dream-glow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    transform: scale(0.95);
+    transition: transform 0.25s ease;
+}
+
+.modal-backdrop.active .modal-window {
+    transform: scale(1.0);
+}
+
+.modal-header {
+    height: 52px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: rgba(11, 16, 27, 0.5);
+}
+
+.modal-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-close-modal {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-close-modal:hover {
+    color: #ffffff;
+    background: rgba(239, 68, 68, 0.35);
+    border-color: #ef4444;
+}
+
+.modal-body {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* ==========================================================================
+   1. ITEM SHOP MODAL
+   ========================================================================== */
+.shop-categories {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.shop-tab {
+    padding: 6px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.shop-tab.active {
+    background: var(--dream);
+    color: var(--obsidian);
+    border-color: var(--dream);
+}
+
+.shop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 12px;
+}
+
+.shop-item-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.shop-item-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--dream);
+    transform: translateY(-2px);
+}
+
+.shop-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.shop-item-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.shop-item-cost {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--gold);
+}
+
+.shop-item-desc {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+/* ==========================================================================
+   2. GACHA SUMMON MODAL (5 CHESTS)
+   ========================================================================== */
+.gacha-chests-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.gacha-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.gacha-chest-icon {
+    font-size: 2.2rem;
+}
+
+.gacha-chest-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.btn-open-chest {
+    margin-top: auto;
+    width: 100%;
+    padding: 8px 0;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--dream) 0%, #0284c7 100%);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+/* ==========================================================================
+   3. SETTINGS & LIVE CUSTOM HUD LAYOUT EDITOR
+   ========================================================================== */
+.settings-section {
+    margin-bottom: 20px;
+}
+
+.settings-section-title {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--dream);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.setting-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.slider-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 220px;
+}
+
+.slider-ctrl input[type="range"] {
+    flex: 1;
+    accent-color: var(--dream);
+}
