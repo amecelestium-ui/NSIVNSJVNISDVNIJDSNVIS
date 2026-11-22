@@ -96,21 +96,22 @@
                 <span class="sub-text">JKT48 3D MOBA & OPEN-WORLD ARENA</span>
             </div>
 
-            <!-- Glowing Progress Bar -->
-            <div class="loading-bar-track">
-                <div id="loading-bar-fill" class="loading-bar-fill"></div>
+            <!-- Loading Progress Bar Wrap (Active during 0-100% Loading) -->
+            <div id="loading-progress-wrap" class="loading-progress-wrap">
+                <div class="loading-bar-track">
+                    <div id="loading-bar-fill" class="loading-bar-fill"></div>
+                </div>
+                <!-- Dynamic Status Text -->
+                <div id="loading-status-text" class="loading-status-text">
+                    Menginisialisasi WebGL 3D Pipeline...
+                </div>
             </div>
 
-            <!-- Dynamic Status Text -->
-            <div id="loading-status-text" class="loading-status-text">
-                Menginisialisasi WebGL 3D Pipeline...
+            <!-- Pulsating Tap-to-Enter prompt (Revealed ONLY when 100% loaded) -->
+            <div id="loading-tap-prompt" class="loading-tap-prompt" style="display: none;">
+                <span class="tap-prompt-text">KETUK LAYAR DI MANA SAJA UNTUK MASUK</span>
+                <div class="tap-prompt-hint">Klik Layar • Ketuk Layar • Tekan SPACE / ENTER</div>
             </div>
-
-            <!-- Instant Fast Access Button (Guaranteed to work on file:// and http://) -->
-            <button id="btn-skip-loading" class="btn-skip-loading" onclick="if(window.location.protocol==='file:'){window.location.href='http://127.0.0.1:8080/index.html';}else if(window.enterLobbyNow){window.enterLobbyNow();}">
-                <span>MASUK LOBI SEKARANG</span>
-                <img src="./models/ui_mega_pack/system/icon_back.webp" onerror="this.src='https://onyxpure.my.id/models/ui_mega_pack/system/icon_back.webp'" style="transform: rotate(180deg); width: 14px; height: 14px; vertical-align: middle;" alt="Enter">
-            </button>
         </div>
     </div>
 

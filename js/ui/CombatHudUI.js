@@ -33,10 +33,33 @@ export class CombatHudUI {
         this.cooldowns = { q: 0, w: 0, r: 0, spell: 0, regen: 0, recall: 0 };
         this.isPhotoMode = false;
         this.networkStats = { mode: 'OFFLINE BOT', pingMs: 12, onlineCount: 1 };
+        this.fpsFrames = 0;
+        this.fpsLastTime = performance.now();
 
         this.initDOM();
         this.initMinimap();
         this.wireEvents();
+        this.startFpsCounter();
+    }
+
+    startFpsCounter() {
+        const loop = () => {
+            if (!this.container || this.container.style.display === 'none') return;
+            this.fpsFrames++;
+            const now = performance.now();
+            if (now - this.fpsLastTime >= 500) {
+                const fps = Math.round((this.fpsFrames * 1000) / (now - this.fpsLastTime));
+                const fpsEl = document.getElementById('hud-fps-counter');
+                if (fpsEl) {
+                    fpsEl.textContent = `${fps} FPS`;
+                    fpsEl.style.color = fps >= 55 ? '#10b981' : fps >= 30 ? '#f59e0b' : '#ef4444';
+                }
+                this.fpsFrames = 0;
+                this.fpsLastTime = now;
+            }
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
     }
 
     setHero(hero) {
@@ -102,6 +125,7 @@ export class CombatHudUI {
                     <!-- Top Right: Telemetry & Navigation Buttons -->
                     <div class="top-right-cluster">
                         <div class="telemetry-pill">
+                            <span id="hud-fps-counter" class="net-ping" style="color: #10b981; font-weight: 800;">60 FPS</span>
                             <span id="hud-net-badge" class="net-badge net-local">LOCAL SYNC</span>
                             <span id="hud-net-ping" class="net-ping">12ms</span>
                             <span id="hud-net-count" class="net-count">Online: 1</span>

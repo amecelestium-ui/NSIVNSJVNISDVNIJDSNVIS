@@ -44,10 +44,10 @@ export class SkyAndLighting {
 
         if (this.quality !== 'low') {
             this.sunLight.castShadow = true;
-            const shadowSize = this.quality === 'high' ? 2048 : 1024;
+            const shadowSize = 1024; // 1024x1024 PCFShadowMap
             this.sunLight.shadow.mapSize.set(shadowSize, shadowSize);
             this.sunLight.shadow.camera.near = 0.5;
-            this.sunLight.shadow.camera.far = 350;
+            this.sunLight.shadow.camera.far = 300;
             this.sunLight.shadow.camera.left = -45;
             this.sunLight.shadow.camera.right = 45;
             this.sunLight.shadow.camera.top = 45;
@@ -56,9 +56,13 @@ export class SkyAndLighting {
         }
         this.scene.add(this.sunLight);
 
-        // 3. Hemisphere Light
-        this.hemiLight = new THREE.HemisphereLight(0x94d8ff, 0x5d8e44, 1.15);
+        // 3. Hemisphere Light (Bright ground bounce)
+        this.hemiLight = new THREE.HemisphereLight(0x94d8ff, 0x5d8e44, 1.25);
         this.scene.add(this.hemiLight);
+
+        // Ambient Light for consistent clarity across platforms
+        const amb = new THREE.AmbientLight(0xffffff, 0.85);
+        this.scene.add(amb);
 
         // 4. PMREM RoomEnvironment for Character Reflections
         try {
@@ -85,10 +89,8 @@ export class SkyAndLighting {
         // 6. Floating Billboard Clouds
         this.initClouds();
 
-        // 7. Post-Processing Selective HDR Bloom
-        if (this.quality !== 'low') {
-            this.initPostProcessing();
-        }
+        // 7. Direct Renderer (Post-processing disabled by default to eliminate NaN black-box artifact)
+        this.composer = null;
     }
 
     initClouds() {

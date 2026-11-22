@@ -22,14 +22,15 @@ export class FloraSystem {
     }
 
     async init() {
-        let grassCount = 18000;
-        let flowerCount = 4500;
+        // High-Performance Instance Budget (Anti-Freeze, Smooth 60 FPS)
+        let grassCount = 2500;
+        let flowerCount = 800;
         if (this.quality === 'low') {
-            grassCount = 7000;
-            flowerCount = 1800;
+            grassCount = 800;
+            flowerCount = 250;
         } else if (this.quality === 'high') {
-            grassCount = 36000;
-            flowerCount = 9000;
+            grassCount = 5000;
+            flowerCount = 1600;
         }
 
         // Crossed quad geometry
@@ -146,9 +147,9 @@ export class FloraSystem {
 
         while (placed < count && attempts < count * 3) {
             attempts++;
-            // Scatter within 240m radius of center, or outer hills
+            // Scatter within 55m active radius of player
             const angle = Math.random() * Math.PI * 2;
-            const dist = 14 + Math.random() * 260;
+            const dist = 6 + Math.random() * 52;
             const x = Math.cos(angle) * dist;
             const z = Math.sin(angle) * dist;
 

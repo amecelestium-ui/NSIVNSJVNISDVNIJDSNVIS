@@ -35,6 +35,16 @@ export class LoadingAndLobbyUI {
         this.searchQuery = '';
         this.selectedArena = 'arena_colosseum';
         this.selectedSpell = 'spell_flicker';
+        this.selectedSandboxSpawn = { x: 0, z: 0, name: 'Kubah Terarium / Plaza' };
+        this.sandboxLandmarks = [
+            { id: 'plaza', name: 'Kubah Plaza', x: 0, z: 0, img: 'skyboxes_and_banners/bg_loading_onyxpure.webp' },
+            { id: 'cafe', name: 'Botanical Cafe', x: 55, z: 0, img: 'world_props_2d/onyx_botanical_cafe.png' },
+            { id: 'windmill', name: 'Desa Kincir', x: -60, z: 0, img: 'world_props_2d/mondstadt_windmill.png' },
+            { id: 'aquifer', name: 'Crystal Aquifer', x: 0, z: -58, img: 'world_props_2d/crystal_aquifer_shrine.png' },
+            { id: 'hills', name: 'Padang Bukit', x: 0, z: 210, img: 'world_props_2d/giant_emerald_oak_tree.png' },
+            { id: 'sakura', name: 'Hutan Sakura', x: -240, z: 0, img: 'world_props_2d/giant_sakura_tree.png' },
+            { id: 'harbor', name: 'Pelabuhan Azure', x: 460, z: 0, img: 'world_props_2d/harbor_lighthouse.png' }
+        ];
 
         this.initDOM();
         this.renderRoster();
@@ -260,20 +270,31 @@ export class LoadingAndLobbyUI {
                         <img src="${AssetRegistry.resolve('ui_mega_pack/spells/spell_sprint.webp')}" class="spell-thumb" data-spell="spell_sprint" title="Sprint (Move Speed)" alt="Sprint">
                     </div>
 
-                    <!-- Arena Map Selector (3 Compact Cards) -->
-                    <div class="inspector-section-label">PILIH ARENA PERTARUNGAN:</div>
+                    <!-- 1. Sandbox Landmarks Selector (7 Locations) -->
+                    <div class="inspector-section-label">PILIH LOKASI SANDBOX:</div>
+                    <div class="sandbox-picker-scroll">
+                        ${this.sandboxLandmarks.map((loc, idx) => `
+                            <div class="sandbox-card-thumb ${idx === 0 ? 'active' : ''}" data-x="${loc.x}" data-z="${loc.z}" data-name="${loc.name}" title="${loc.name} (${loc.x}, ${loc.z})">
+                                <img src="${AssetRegistry.resolve(loc.img)}" class="sandbox-bg-img" alt="${loc.name}" onerror="this.src='https://onyxpure.my.id/models/${loc.img}'">
+                                <span class="sandbox-card-name">${loc.name}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- 2. Arena Map Selector (3 Compact Cards) -->
+                    <div class="inspector-section-label">PILIH ARENA MOBA (5v5):</div>
                     <div class="arena-picker-compact">
                         <div class="arena-card-thumb active" data-arena="arena_colosseum" title="Celestial Colosseum">
                             <img src="${AssetRegistry.resolve('skyboxes_and_banners/card_arena_colosseum.webp')}" class="arena-bg-img" alt="Colosseum">
-                            <span class="arena-card-name">Colosseum</span>
+                            <span class="arena-card-name">Celestial Colosseum</span>
                         </div>
                         <div class="arena-card-thumb" data-arena="arena_ocean_bridge" title="Grand Ocean Bridge">
                             <img src="${AssetRegistry.resolve('skyboxes_and_banners/card_arena_ocean_bridge.webp')}" class="arena-bg-img" alt="Ocean Bridge">
-                            <span class="arena-card-name">Ocean Bridge</span>
+                            <span class="arena-card-name">Grand Ocean Bridge</span>
                         </div>
                         <div class="arena-card-thumb" data-arena="arena_sky_sakura" title="Sky Sakura Sanctuary">
                             <img src="${AssetRegistry.resolve('skyboxes_and_banners/card_arena_sky_sakura.webp')}" class="arena-bg-img" alt="Sky Sakura">
-                            <span class="arena-card-name">Sky Sakura</span>
+                            <span class="arena-card-name">Sky Sakura Sanctuary</span>
                         </div>
                     </div>
                 </aside>
@@ -557,6 +578,20 @@ export class LoadingAndLobbyUI {
             });
         });
 
+        // Sandbox Landmark Thumbs
+        document.querySelectorAll('.sandbox-card-thumb').forEach(thumb => {
+            thumb.addEventListener('click', () => {
+                document.querySelectorAll('.sandbox-card-thumb').forEach(t => t.classList.remove('active'));
+                thumb.classList.add('active');
+                this.selectedSandboxSpawn = {
+                    x: parseFloat(thumb.dataset.x) || 0,
+                    z: parseFloat(thumb.dataset.z) || 0,
+                    name: thumb.dataset.name || 'Kubah Plaza'
+                };
+                AudioManager.play('ui_click');
+            });
+        });
+
         // Arena Card Thumbs
         document.querySelectorAll('.arena-card-thumb').forEach(card => {
             card.addEventListener('click', () => {
@@ -633,7 +668,7 @@ export class LoadingAndLobbyUI {
                 AudioManager.play('ui_click');
                 AudioManager.play('portal_warp');
                 const heroToLaunch = this.selectedHero.is3DActive ? this.selectedHero : this.lastPlayableHero;
-                this.onEnterSandbox(heroToLaunch.id);
+                this.onEnterSandbox(heroToLaunch.id, this.selectedSandboxSpawn);
             });
         }
     }

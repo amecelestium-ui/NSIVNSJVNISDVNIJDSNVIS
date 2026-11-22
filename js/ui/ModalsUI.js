@@ -421,11 +421,12 @@ export class ModalsUI {
         // 64 2D Props from ASSET_CATEGORIES['world_props_2d']
         const propPaths = ASSET_CATEGORIES['world_props_2d'] || [];
         propPaths.forEach(p => {
+            const cleanPath = p.replace(/^(\.\/|\/)?(models|model)\//, '');
             const rawName = p.split('/').pop().replace('.png', '').replace(/_/g, ' ');
             const card = document.createElement('div');
             card.className = 'codex-prop-card';
             card.innerHTML = `
-                <img src="${AssetRegistry.resolve(p)}" class="codex-prop-img" alt="${rawName}" loading="lazy">
+                <img src="${AssetRegistry.resolve(p)}" class="codex-prop-img" alt="${rawName}" loading="lazy" onerror="this.onerror=null; this.src='https://onyxpure.my.id/models/${cleanPath}';">
                 <div class="codex-prop-name">${rawName}</div>
                 <div class="codex-prop-lore">Struktur terarium megah di Onyx World.</div>
             `;
@@ -450,7 +451,7 @@ export class ModalsUI {
             const card = document.createElement('div');
             card.className = 'codex-status-card';
             card.innerHTML = `
-                <img src="${AssetRegistry.resolve(s.icon)}" class="codex-status-img" alt="${s.name}">
+                <img src="${AssetRegistry.resolve(s.icon)}" class="codex-status-img" alt="${s.name}" onerror="this.onerror=null; this.src='https://onyxpure.my.id/models/${s.icon}';">
                 <div class="codex-status-info">
                     <div class="codex-status-title">${s.name}</div>
                     <div class="codex-status-desc">${s.desc}</div>

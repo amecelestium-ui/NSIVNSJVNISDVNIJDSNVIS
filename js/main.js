@@ -160,20 +160,45 @@ class KernelEngine {
 
         this.updateLoadingProgress(100, 'Siap!');
 
-        // Quick auto-transition after 2.4s (snappy, no endless wait!)
-        setTimeout(() => {
-            if (!this.hasTransitionedFromLoading) {
-                this.transitionToLobby();
-            }
-        }, 1100);
+        // Loading 100% Complete: Switch from progress bar to pulsating "KETUK LAYAR DI MANA SAJA UNTUK MASUK"
+        const progressWrap = document.getElementById('loading-progress-wrap');
+        const tapPrompt = document.getElementById('loading-tap-prompt');
+        const loadingScreen = document.getElementById('loading-screen');
 
-        // Fail-safe hard timer: guaranteed transition by 2.8s
-        setTimeout(() => {
-            if (!this.hasTransitionedFromLoading) {
-                console.log('[Kernel] Auto-transitioning to Lobby.');
-                this.transitionToLobby();
+        if (progressWrap) progressWrap.style.display = 'none';
+        if (tapPrompt) tapPrompt.style.display = 'flex';
+
+        const enterTrigger = () => {
+            if (this.hasTransitionedFromLoading) return;
+            window.removeEventListener('keydown', keyHandler);
+            if (loadingScreen) loadingScreen.removeEventListener('click', enterTrigger);
+            if (tapPrompt) tapPrompt.removeEventListener('click', enterTrigger);
+
+            // Legal AudioContext unlock on first user interaction
+            try {
+                if (THREE.AudioContext && THREE.AudioContext.getContext()) {
+                    THREE.AudioContext.getContext().resume();
+                }
+            } catch (_) {}
+
+            this.transitionToLobby();
+        };
+
+        const keyHandler = (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                enterTrigger();
             }
-        }, 2800);
+        };
+
+        if (loadingScreen) {
+            loadingScreen.style.cursor = 'pointer';
+            loadingScreen.addEventListener('click', enterTrigger, { once: true });
+        }
+        if (tapPrompt) {
+            tapPrompt.addEventListener('click', enterTrigger, { once: true });
+        }
+        window.addEventListener('keydown', keyHandler);
+        window.enterLobbyNow = enterTrigger;
 
         // Start 60 Hz Render Loop
         window.addEventListener('resize', () => this.onWindowResize());
@@ -186,7 +211,7 @@ class KernelEngine {
         const width = window.innerWidth;
         const height = window.innerHeight;
 
-        // Renderer
+        // Renderer: Direct High-Performance Rendering (No Bloom/Composer freeze)
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             powerPreference: 'high-performance',
@@ -194,12 +219,12 @@ class KernelEngine {
             alpha: false
         });
         this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.05;
+        this.renderer.toneMappingExposure = 1.15;
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap; // 1024 PCF Shadows
 
         // Scene
         this.scene = new THREE.Scene();
@@ -210,20 +235,8 @@ class KernelEngine {
         this.camera.position.set(0, 3.2, 7.5);
         this.camera.lookAt(0, 1.4, 0);
 
-        // Post-Processing Composer (Selective HDR Bloom)
-        const renderPass = new RenderPass(this.scene, this.camera);
-        const bloomPass = new UnrealBloomPass(
-            new THREE.Vector2(width, height),
-            0.75, // strength
-            0.4,  // radius
-            1.0   // threshold = 1.0 ensures only emissive > 1.0 glows
-        );
-        const outputPass = new OutputPass();
-
-        this.composer = new EffectComposer(this.renderer);
-        this.composer.addPass(renderPass);
-        this.composer.addPass(bloomPass);
-        this.composer.addPass(outputPass);
+        // Targeted Direct Render (Composer disabled by default to eliminate WebGL NaN artifact)
+        this.composer = null;
 
         // Targeting System
         this.targeting = new TargetingSystem({
@@ -267,20 +280,32 @@ class KernelEngine {
             }
         }).catch(() => {});
 
-        // Glowing Pedestal Base
-        const baseGeo = new THREE.CylinderGeometry(2.4, 2.8, 0.5, 32);
+        // Elegant Ivory White Marble Pedestal (Radius 2.35m, Height 0.38m)
+        const baseGeo = new THREE.CylinderGeometry(2.35, 2.55, 0.38, 48);
         const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x0a1424,
-            roughness: 0.25,
-            metalness: 0.85
+            color: 0xf1f5f9,
+            roughness: 0.32,
+            metalness: 0.12
         });
         const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-        baseMesh.position.y = -0.25;
+        baseMesh.position.y = -0.19;
         baseMesh.receiveShadow = true;
         this.lobbyPedestalGroup.add(baseMesh);
 
-        // Glowing Ring
-        const ringGeo = new THREE.TorusGeometry(2.35, 0.05, 16, 64);
+        // Gold Carved Ornamental Rim
+        const rimGeo = new THREE.TorusGeometry(2.36, 0.035, 16, 64);
+        const rimMat = new THREE.MeshStandardMaterial({
+            color: 0xfbbf24,
+            roughness: 0.25,
+            metalness: 0.85
+        });
+        const rimMesh = new THREE.Mesh(rimGeo, rimMat);
+        rimMesh.rotation.x = Math.PI / 2;
+        rimMesh.position.y = 0.0;
+        this.lobbyPedestalGroup.add(rimMesh);
+
+        // Glowing Cyan Energy Ring
+        const ringGeo = new THREE.TorusGeometry(2.05, 0.03, 16, 64);
         const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
         const ringMesh = new THREE.Mesh(ringGeo, ringMat);
         ringMesh.rotation.x = Math.PI / 2;
@@ -307,21 +332,23 @@ class KernelEngine {
         this.lobbyFireflies = new THREE.Points(fireflyGeo, fireflyMat);
         this.lobbyPedestalGroup.add(this.lobbyFireflies);
 
-        // Pedestal Key Light
-        const spotLight = new THREE.SpotLight(0x38bdf8, 80, 20, Math.PI / 4, 0.4);
-        spotLight.position.set(0, 7.5, 3.5);
-        spotLight.target = baseMesh;
-        spotLight.castShadow = true;
-        this.lobbyPedestalGroup.add(spotLight);
+        // 3-Point Studio Lighting for Hero Showcase (Zero Pitch-Black Hero!)
+        const ambLight = new THREE.AmbientLight(0xffffff, 1.35);
+        this.lobbyPedestalGroup.add(ambLight);
 
-        // Rim Light
-        const rimLight = new THREE.DirectionalLight(0xf59e0b, 1.8);
-        rimLight.position.set(0, 4.0, -5.0);
+        const hemiLight = new THREE.HemisphereLight(0xdff4ff, 0x6b8e5a, 1.2);
+        this.lobbyPedestalGroup.add(hemiLight);
+
+        const keyLight = new THREE.DirectionalLight(0xfff6e5, 2.2);
+        keyLight.position.set(4, 7, 8);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 1024;
+        keyLight.shadow.mapSize.height = 1024;
+        this.lobbyPedestalGroup.add(keyLight);
+
+        const rimLight = new THREE.PointLight(0x38bdf8, 2.5, 12);
+        rimLight.position.set(0, 3.5, -4.5);
         this.lobbyPedestalGroup.add(rimLight);
-
-        // Fill Light
-        const fillLight = new THREE.HemisphereLight(0x1e293b, 0x05080e, 1.2);
-        this.lobbyPedestalGroup.add(fillLight);
     }
 
     async loadLobbyHero(hero) {
@@ -417,8 +444,8 @@ class KernelEngine {
                 onSelectHero: (hero) => {
                     this.loadLobbyHero(hero);
                 },
-                onEnterSandbox: (hero) => {
-                    this.transitionToSandbox(hero);
+                onEnterSandbox: (hero, spawnLoc) => {
+                    this.transitionToSandbox(hero, spawnLoc);
                 },
                 onEnterArena: (hero, arenaId, spellId) => {
                     this.transitionToArena(hero, arenaId, spellId);
@@ -448,14 +475,22 @@ class KernelEngine {
         this.camera.lookAt(0, 1.25, 0);
     }
 
-    async transitionToSandbox(hero) {
+    async transitionToSandbox(hero, spawnLoc) {
         const heroObj = typeof hero === 'object' ? hero : (getHeroById(hero) || this.selectedHero);
-        console.log(`[Kernel] Entering Mega Terrarium Sandbox with ${heroObj.name}...`);
+        const spawnX = spawnLoc?.x ?? 0;
+        const spawnZ = spawnLoc?.z ?? 0;
+        console.log(`[Kernel] Entering Mega Terrarium Sandbox with ${heroObj.name} at (${spawnX}, ${spawnZ})...`);
         this.currentState = GAME_STATES.SANDBOX;
 
         // Hide Lobby UI
         if (this.lobbyContainer) this.lobbyContainer.style.display = 'none';
         if (this.lobbyPedestalGroup) this.lobbyPedestalGroup.visible = false;
+
+        // Synchronously show Combat HUD container immediately so UI never vanishes!
+        if (this.combatContainer) {
+            this.combatContainer.style.display = 'block';
+            this.combatContainer.style.opacity = '1';
+        }
 
         // Play Terrarium Exploration BGM
         this.audio.playBgm('bgm_terrarium');
@@ -476,12 +511,12 @@ class KernelEngine {
         this.flora = new FloraSystem(this.scene, SaveSystem.data.settings.graphicsQuality);
         await this.flora.init();
 
-        // Setup World Props (64/64 Props)
+        // Setup World Props (Progressive stream near props first)
         this.worldBuilder = new WorldBuilder(this.scene, 'sandbox');
-        await this.worldBuilder.init();
+        await this.worldBuilder.init(spawnX, spawnZ);
 
         // Spawn Player Character
-        await this.spawnPlayer(heroObj, 0, 0);
+        await this.spawnPlayer(heroObj, spawnX, spawnZ);
 
         // Setup Skill Executor
         this.skillExecutor = new HeroSkillExecutor({
@@ -544,6 +579,12 @@ class KernelEngine {
         // Hide Lobby UI
         if (this.lobbyContainer) this.lobbyContainer.style.display = 'none';
         if (this.lobbyPedestalGroup) this.lobbyPedestalGroup.visible = false;
+
+        // Synchronously show Combat HUD container immediately!
+        if (this.combatContainer) {
+            this.combatContainer.style.display = 'block';
+            this.combatContainer.style.opacity = '1';
+        }
 
         // Play Arena Battle BGM
         this.audio.playBgm('bgm_battle');
@@ -876,10 +917,8 @@ class KernelEngine {
             this.vfx.update(delta);
         }
 
-        // Render via EffectComposer with Bloom
-        if (this.composer) {
-            this.composer.render();
-        } else if (this.renderer) {
+        // Direct High-Performance Render (Zero Bloom NaN artifact, Smooth 60 FPS)
+        if (this.renderer && this.scene && this.camera) {
             this.renderer.render(this.scene, this.camera);
         }
     }
